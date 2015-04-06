@@ -169,14 +169,16 @@ Socket.prototype.recv = function(is_handshake){
 		var total_waited = 0;
 		var timeout_val = 100;
 		var tmp_buf = [];
+		var last_time_data_seen = 0;
 		//keep checking until either timeout or enough data gathered
 		var check_recv = function(resolve, reject){
-			if (((total_waited / 1000) >= 3) && (tmp_buf.length > 0)){
-				//TODO: refine the logic here. In python, we waited 3 seconds since the last
-				//time we *received data*, not since we started this receiving loop as implemeted here
-				console.log('resolve after 3 secs');
-				resolve(tmp_buf);
-				return;
+			if (last_time_data_seen > 0){
+				if (( (new Date().getTime() - last_time_data_seen) / 1000) >= 3){
+					assert (tmp_buf.length > 0, "tmp_buf.length > 0");
+					console.log('resolve after 3 secs');
+					resolve(tmp_buf);
+					return;
+				}
 			}
 			if ((total_waited / 1000) >= 20){
 				reject('socket timed out');
@@ -193,6 +195,7 @@ Socket.prototype.recv = function(is_handshake){
 			sock.buffer = [];
 			if(! check_complete_records(tmp_buf)){
 				console.log("check_complete_records failed");
+				last_time_data_seen = new Date().getTime();
 				setTimeout(function(){
 					check_recv(resolve, reject);
 				}, timeout_val);
@@ -388,7 +391,7 @@ function prepare_pms(modulus, tryno){
 		var rrsapms2 = reply_data.slice(0, 256);
 		pms_session.p_auditor = reply_data.slice(256, 304);
 		rsapms2 = reply_data.slice(304);
-		assert(rsapms2.length === 256, "RSAPMS2.length !== 256");
+		//assert(rsapms2.length === modulus.length, "rsapms2.length === modulus.length");
 		return pms_session.complete_handshake(rrsapms2);
 	})
 	.then(function(response){
@@ -454,10 +457,11 @@ function decrypt_html(pms2, tlsn_session){
 	tlsn_session.do_key_expansion(); //#also resets encryption connection state
 	
 	console.log("worker will decrypt cs:", tlsn_session.server_connection_state.cipher_suite);
-	//var rv = tlsn_session.process_server_app_data_records();
+	var rv = tlsn_session.process_server_app_data_records();
 	//the worker below performs the equivalent of ---^
 	//The idea was to not freeze the UI while decrypting
 	//However, seems like FF's implementation (at least on Linux)is broken, because the worker still freezes the UI
+	/*
 	return new Promise(function(resolve, reject) {
 		var worker = new ChromeWorker("chrome://tlsnotary/content/decryption_worker.js");
 		console.log('loaded worker');
@@ -483,18 +487,22 @@ function decrypt_html(pms2, tlsn_session){
 		console.log('sending to worker');
 		worker.postMessage(obj);
 	}).
-	then(function(rv){
+	then(function(rv){ */
 		console.log('after worker responded');
 		var plaintext = rv[0];
 		var bad_mac = rv[1];
 		if (bad_mac) {
 			throw("ERROR! Audit not valid! Plaintext is not authenticated.");
 		}
+		console.log('1');
 		var plaintext_str = ba2str(plaintext);
+		console.log('2');
 		var plaintext_dechunked = dechunk_http(plaintext_str);
+		console.log('3');
 		var plaintext_gunzipped = gunzip_http(plaintext_dechunked);
+		console.log('4');
+		console.log('returning plaintext of length ' + plaintext_gunzipped.length);
 		return plaintext_gunzipped;
-	});
 }
 
 
@@ -576,11 +584,33 @@ function start_audit(modulus, certhash, name, headers, ee_secret, ee_pad_secret,
 			throw('Failed to verify notary server signature');
 		}
 		console.log('finished sig verification');
-		return decrypt_html(pms2, tlsn_session)
-	})
+		var plaintext = decrypt_html(pms2, tlsn_session);
+		//return [plaintext, pms2, fullresp, tlsn_session.server_modulus, signature];
+		return [tlsn_session.chosen_cipher_suite,
+				tlsn_session.client_random,
+				tlsn_session.server_random,
+				tlsn_session.pms1,
+				tlsn_session.pms2,
+				tlsn_session.server_mod_length,
+				tlsn_session.server_modulus,
+				tlsn_session.server_exponent,
+				tlsn_session.tlsver,
+				tlsn_session.initial_tlsver,
+				fullresp.length,
+				fullresp,
+				tlsn_session.IV_after_finished.length,
+				tlsn_session.IV_after_finished,
+				waxwing_webnotary_modulus.length,
+				signature,
+				commit_hash,
+				waxwing_webnotary_modulus,
+				plaintext];
+	});
+	/*
 	.then(function(plaintext){
 		return [plaintext, pms2, fullresp, tlsn_session.server_modulus, signature];
 	});
+	*/
 }
 
 
@@ -1416,9 +1446,9 @@ TLSNClientSession.prototype.process_server_hello = function(handshake_objects){
 		this.server_random = this.server_hello.server_random;
 		this.chosen_cipher_suite = this.server_hello.cipher_suite;
 		
-		if (this.server_hello.tlsver.toString() != this.tlsver.toString()){
-			if (this.server_hello.tlsver.toString() == [0x03,0x01].toString() &&
-				this.tlsver.toString == [0x03,0x02].toString()){
+		if (this.server_hello.tlsver.toString() !== this.tlsver.toString()){
+			if ((this.server_hello.tlsver.toString() === [0x03,0x01].toString()) &&
+				(this.tlsver.toString() === [0x03,0x02].toString())){
 				/*#server requested downgrade
 				#note that this can only happen *before* a TLSConnectionState object is
 				#initialised, so the tlsversion used in that object will be synchronised.
@@ -1659,7 +1689,6 @@ TLSNClientSession.prototype.set_encrypted_pms = function(){
     var bigint_pms =  bigint_pms1.multiply(bigint_pms2).mod(bigint_mod);
     var resulthex = bigint_pms.toString(16);
 	this.enc_pms = hex2ba(resulthex);
-	assert (this.enc_pms.length === 256, "encpms len not 256");
     return this.enc_pms;
 };
 
@@ -1686,12 +1715,12 @@ TLSNClientSession.prototype.set_enc_first_half_pms = function(){
 	var bigint_exp = new BigInteger(ba2hex(bi2ba(this.server_exponent)), 16);
 	var bigint_result = bigint_base.modPow(bigint_exp, bigint_mod);
 	var resultba = hex2ba(bigint_result.toString(16));
-	var padding_len = (256 - (resultba.length % 256)) % 256;
+	var padding_len = this.server_modulus.length - resultba.length;
 	for(i=0; i < padding_len; i++){ //zero-pad 
 		resultba = [].concat(0x00, resultba);
 	}
 	this.enc_first_half_pms = resultba;
-	assert ((this.enc_first_half_pms.length % 256) === 0, "encpms1 len not a multiple of 256");
+	assert (this.enc_first_half_pms.length === this.server_modulus.length, "this.enc_first_half_pms.length === tlsn_session.server_mod_length");
 };
 
 TLSNClientSession.prototype.set_auditee_secret = function(){

@@ -19,7 +19,12 @@ const NS_XUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul",
 
 let main = {
   action: function() {
-	  startRecording();
+	  if (testing){
+		  startTesting();
+	  }
+	  else {
+		startRecording();
+	}
   },
   
   /*

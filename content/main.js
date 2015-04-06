@@ -5,7 +5,6 @@ const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 Cu.import("resource://gre/modules/PopupNotifications.jsm");
 Cu.import('resource://gre/modules/Services.jsm');
 Cu.import("resource://gre/modules/osfile.jsm")
-var testingMode = false;
 var dict_of_status = {};
 var dict_of_httpchannels = {};
 
@@ -94,8 +93,8 @@ function startListening(){
     gBrowser.addProgressListener(myListener);
 }
 
-
-function startRecording(){	
+//callback is used in testing to signal when this page's n10n finished
+function startRecording(callback){	
     var audited_browser = gBrowser.selectedBrowser;
     var tab_url_full = audited_browser.contentWindow.location.href;
     
@@ -142,6 +141,7 @@ function startRecording(){
 		var stream = Cc['@mozilla.org/scriptableinputstream;1'].createInstance(Ci.nsIScriptableInputStream);
 		stream.init(uploadChannelStream);
 		var uploaddata = stream.read(stream.available());
+		stream.close();
 		//FF's uploaddata contains Content-Type and Content-Length headers + '\r\n\r\n' + http body
 		headers += uploaddata;
 	}
@@ -168,6 +168,9 @@ function startRecording(){
 					resolve(args);
 				}).catch(function(error){
 					console.log('caught error', error);
+					if (error != 'PMS trial failed'){
+						alert('caught error ' + error);
+					}
 					if (tries == 10){
 						alert('10 tries')
 						reject('10 tries');
@@ -181,9 +184,16 @@ function startRecording(){
 	})
 	.then(function(args){
 		return start_audit(modulus, certsha256, server, headers, args[0], args[1], args[2]);
+		
 	})
-	.then(function(args){
-		save_session_and_open_html(args[0], args[1], args[2], args[3], args[4], server);
+	.then(function(args2){
+		return save_session_and_open_html(args2, server);
+	})
+	.then(function(){
+		//testing only
+		if (testing){
+			callback();
+		}
 	})
 	.catch(function(err){
 	 //TODO need to get a decent stack trace
@@ -192,7 +202,28 @@ function startRecording(){
 	});
 }
 
-function save_session_and_open_html(html, pms2, response, modulus, sig, server){
+function save_session_and_open_html(args, server){
+	assert (args.length === 19, "wrong args length");
+	var cipher_suite = args[0];
+	var client_random = args[1];
+	var server_random = args[2];
+	var pms1 = args[3];
+	var pms2 = args[4];
+	var server_mod_length = args[5];
+	var server_modulus = args[6];
+	var server_exponent = args[7];
+	var tlsver = args[8];
+	var initial_tlsver = args[9];
+	var fullresp_length = args[10];
+	var fullresp = args[11];
+	var IV_after_finished_length = args[12];
+	var IV_after_finished = args[13];
+	var waxwing_webnotary_modulus_length = args[14];
+	var signature = args[15];
+	var commit_hash = args[16];
+	var waxwing_webnotary_modulus = args[17];
+	var html = args[18];
+	
 	var localDir = Cc["@mozilla.org/file/directory_service;1"].
 			getService(Ci.nsIProperties).get("ProfD", Ci.nsIFile);
 
@@ -218,29 +249,34 @@ function save_session_and_open_html(html, pms2, response, modulus, sig, server){
 		OS.File.writeAtomic(path_html.path, ba2ua(str2ba(html)))
 	})
 	.then(function(){
-		var path_pms2 = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
-		path_pms2.initWithPath(localDir.path);
-		path_pms2.append('pms2');
-		return OS.File.writeAtomic(path_pms2.path, ba2ua(pms2));
+		var path_tlsn = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+		path_tlsn.initWithPath(localDir.path);
+		path_tlsn.append(time+'-'+server+'.tlsn');
+		return OS.File.writeAtomic(path_tlsn.path, ba2ua([].concat(
+			str2ba('tlsnotary notarization file\n\n'),
+			[0x00, 0x01],
+			bi2ba(cipher_suite, {'fixed':2}),
+			client_random,
+			server_random,
+			pms1,
+			pms2,
+			bi2ba(server_mod_length, {'fixed':2}),
+			server_modulus,
+			bi2ba(server_exponent, {'fixed':3}),
+			tlsver,
+			initial_tlsver,
+			bi2ba(fullresp_length, {'fixed':8}),
+			fullresp,
+			bi2ba(IV_after_finished_length, {'fixed':2}),
+			IV_after_finished,
+			bi2ba(waxwing_webnotary_modulus_length, {'fixed':2}),
+			signature,
+			commit_hash,
+			waxwing_webnotary_modulus
+		)));
 	})
-	.then(function(){
-		var path_response = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
-		path_response.initWithPath(localDir.path);
-		path_response.append('response');
-		return OS.File.writeAtomic(path_response.path, ba2ua(response));
-	})
-	.then(function(){
-		var path_modulus = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
-		path_modulus.initWithPath(localDir.path);
-		path_modulus.append('modulus');
-		return OS.File.writeAtomic(path_modulus.path, ba2ua(modulus));
-	})
-	.then(function(){
-		var path_sig = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
-		path_sig.initWithPath(localDir.path);
-		path_sig.append('sig');
-		return OS.File.writeAtomic(path_sig.path, ba2ua(sig));
-	})
+	
+	
 	.then(function(){
 		gBrowser.addTab(path_html.path);
 	});

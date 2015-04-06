@@ -133,6 +133,7 @@ function loadjs(){
   var addon = thisaddon;
   include(addon, "button.js");
   include(addon, "main.js");
+  include(addon, "testdriver.js");
   include(addon, "CryptoJS/components/core.js");
   include(addon, "CryptoJS/components/md5.js");
   include(addon, "CryptoJS/components/evpkdf.js");
