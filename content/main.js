@@ -204,26 +204,27 @@ function startRecording(callback){
 }
 
 function save_session_and_open_html(args, server){
-	assert (args.length === 19, "wrong args length");
+	assert (args.length === 18, "wrong args length");
 	var cipher_suite = args[0];
 	var client_random = args[1];
 	var server_random = args[2];
 	var pms1 = args[3];
 	var pms2 = args[4];
-	var server_mod_length = args[5];
-	var server_modulus = args[6];
-	var server_exponent = args[7];
-	var tlsver = args[8];
-	var initial_tlsver = args[9];
-	var fullresp_length = args[10];
-	var fullresp = args[11];
-	var IV_after_finished_length = args[12];
-	var IV_after_finished = args[13];
-	var waxwing_webnotary_modulus_length = args[14];
-	var signature = args[15];
-	var commit_hash = args[16];
-	var waxwing_webnotary_modulus = args[17];
-	var html = args[18];
+	
+	var server_cert_length = args[5];
+	var server_cert = args[6];
+	
+	var tlsver = args[7];
+	var initial_tlsver = args[8];
+	var fullresp_length = args[9];
+	var fullresp = args[10];
+	var IV_after_finished_length = args[11];
+	var IV_after_finished = args[12];
+	var waxwing_webnotary_modulus_length = args[13];
+	var signature = args[14];
+	var commit_hash = args[15];
+	var waxwing_webnotary_modulus = args[16];
+	var html = args[17];
 	
 	var localDir = Cc["@mozilla.org/file/directory_service;1"].
 			getService(Ci.nsIProperties).get("ProfD", Ci.nsIFile);
@@ -261,9 +262,8 @@ function save_session_and_open_html(args, server){
 			server_random,
 			pms1,
 			pms2,
-			bi2ba(server_mod_length, {'fixed':2}),
-			server_modulus,
-			bi2ba(server_exponent, {'fixed':3}),
+			bi2ba(server_cert_length, {'fixed':3}),
+			server_cert,
 			tlsver,
 			initial_tlsver,
 			bi2ba(fullresp_length, {'fixed':8}),
@@ -283,6 +283,35 @@ function save_session_and_open_html(args, server){
 	});
 }
 	
+
+function verify_tlsn(path){
+	//TODO open and read binary data
+	var data; // data is an array of numbers
+	var offset = 0;
+	if (ba2tr(data.slice(offset, offset+=29)) !== "tlsnotary notarization file\n\n"){
+		throw('wrong header');
+	}
+	if(data.slice(offset, offset+=2).toString() !== [0x00, 0x01].toString()){
+		throw('wrong version');
+	}
+	var cs = ba2int(data.slice(offset, offset+=2));
+	var cr = data.slice(offset, offset+=32);
+	var sr = data.slice(offset, offset+=32);
+	var pms1 = data.slice(offset, offset+=24);
+	var pms2 = data.slice(offset, offset+=24);
+	var tlsver = data.slice(offset, offset+=2);
+	var tlsver_initial = data.slice(offset, offset+=2);
+	var response_len = ba2int(data.slice(offset, offset+=8));
+	var response = data.slice(offset, offset+=response_len);
+	var IV_after_finished_len = ba2int(data.slice(offset, offset+=2));
+	var IV_after_finished = data.slice(offset, offset+=IV_after_finished_len);
+	var sig_len = ba2int(data.slice(offset, offset+=2));
+	var sig = data.slice(offset, offset+=sig_len);
+	var commit_hash = data.slice(offset, offset+=32);
+	var notary_pubkey = data.slice(offset, offset+=sig_len);
+	assert (data.length === offset, 'invalid tlsn length');
+	
+}
 
 
 

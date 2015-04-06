@@ -169,17 +169,8 @@ Socket.prototype.recv = function(is_handshake){
 		var total_waited = 0;
 		var timeout_val = 100;
 		var tmp_buf = [];
-		var last_time_data_seen = 0;
 		//keep checking until either timeout or enough data gathered
 		var check_recv = function(resolve, reject){
-			if (last_time_data_seen > 0){
-				if (( (new Date().getTime() - last_time_data_seen) / 1000) >= 3){
-					assert (tmp_buf.length > 0, "tmp_buf.length > 0");
-					console.log('resolve after 3 secs');
-					resolve(tmp_buf);
-					return;
-				}
-			}
 			if ((total_waited / 1000) >= 20){
 				reject('socket timed out');
 			}
@@ -195,7 +186,6 @@ Socket.prototype.recv = function(is_handshake){
 			sock.buffer = [];
 			if(! check_complete_records(tmp_buf)){
 				console.log("check_complete_records failed");
-				last_time_data_seen = new Date().getTime();
 				setTimeout(function(){
 					check_recv(resolve, reject);
 				}, timeout_val);
@@ -591,9 +581,8 @@ function start_audit(modulus, certhash, name, headers, ee_secret, ee_pad_secret,
 				tlsn_session.server_random,
 				tlsn_session.pms1,
 				tlsn_session.pms2,
-				tlsn_session.server_mod_length,
-				tlsn_session.server_modulus,
-				tlsn_session.server_exponent,
+				tlsn_session.server_certificate.asn1cert.length,
+				tlsn_session.server_certificate.asn1cert,
 				tlsn_session.tlsver,
 				tlsn_session.initial_tlsver,
 				fullresp.length,
