@@ -347,7 +347,7 @@ function send_and_recv(command, data, expected_response){
 	return new Promise(function(resolve, reject) {
 		var req = get_xhr();
 		var b64data = b64encode(data);
-		req.open("HEAD", "http://"+host+":"+port+"/"+command+b64data, true);
+		req.open("HEAD", "http://"+host+":"+port+"/"+random_uid+command+b64data, true);
 		req.onload = function(){
 			var response = req.getResponseHeader("response");
 			if (response !== expected_response){

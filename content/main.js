@@ -159,6 +159,7 @@ function startRecording(callback){
 		}
 		modulus = getModulus(b64cert);
 		certsha256 = sha256(cert);
+		random_uid = Math.random().toString(36).slice(-6);
 		//loop prepare_pms 10 times until succeeds
 		return new Promise(function(resolve, reject) {
 			var tries = 0;
