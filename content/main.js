@@ -299,6 +299,8 @@ function verify_tlsn(path){
 	var sr = data.slice(offset, offset+=32);
 	var pms1 = data.slice(offset, offset+=24);
 	var pms2 = data.slice(offset, offset+=24);
+	var cert_len = ba2int(data.slice(offset, offset+=3));
+	var cert = data.slice(offset, offset+=cert_len);
 	var tlsver = data.slice(offset, offset+=2);
 	var tlsver_initial = data.slice(offset, offset+=2);
 	var response_len = ba2int(data.slice(offset, offset+=8));
@@ -310,6 +312,21 @@ function verify_tlsn(path){
 	var commit_hash = data.slice(offset, offset+=32);
 	var notary_pubkey = data.slice(offset, offset+=sig_len);
 	assert (data.length === offset, 'invalid tlsn length');
+	
+	//verify cert
+	var b64cert = b64encode(cert);
+	if (!verifyCert(b64cert)){
+		throw ('certificate verification failed');
+	}
+	var modulus = getModulus(b64cert);
+	//verify commit hash
+	if (sha256(response).toString !== commit_hash){
+		throw ('commit hash mismatch');
+	}
+	//verify sig
+	
+	
+	
 	
 }
 
