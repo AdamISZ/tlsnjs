@@ -6,6 +6,14 @@ function ba2ua(ba){
 	return ua;
 }
 
+function ua2ba(ua){
+	var ba = [];
+	for (var i = 0; i < ua.byteLength; i++) {
+		ba.push(ua[i]);
+	}
+	return ba;
+}
+
 /*CryptoJS only exposes word arrays of ciphertexts which is awkward to use
 so we convert word(4byte) array into a 1-byte array*/
 function wa2ba(wordArray) {
@@ -250,3 +258,20 @@ function gunzip_http(http_data){
     return ungzipped;
 }
 
+function getTime(){
+	var today = new Date();
+	var time = today.getFullYear()+'-'+("00"+(today.getMonth()+1)).slice(-2)+'-'+("00"+today.getDate()).slice(-2)+'-'+ ("00"+today.getHours()).slice(-2)+':'+("00"+today.getMinutes()).slice(-2)+':'+("00"+today.getSeconds()).slice(-2);
+	return time;
+}
+
+function getTLSNdir(){
+	var localDir = Cc["@mozilla.org/file/directory_service;1"].
+			getService(Ci.nsIProperties).get("ProfD", Ci.nsIFile);
+
+	localDir.append("TLSNotary");
+	 if (!localDir.exists() || !localDir.isDirectory()) {
+		// read and write permissions to owner and group, read-only for others.
+		localDir.create(Ci.nsIFile.DIRECTORY_TYPE, 0774);
+	}
+	return localDir;
+}

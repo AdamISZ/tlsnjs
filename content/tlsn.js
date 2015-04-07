@@ -440,59 +440,19 @@ function negotiate_crippled_secrets(tlsn_session){
 
 
 
-function decrypt_html(pms2, tlsn_session){
-	tlsn_session.auditor_secret = pms2.slice(0, tlsn_session.n_auditor_entropy);
-	tlsn_session.set_auditor_secret();
-	tlsn_session.set_master_secret_half(); //#without arguments sets the whole MS
-	tlsn_session.do_key_expansion(); //#also resets encryption connection state
-	
-	console.log("worker will decrypt cs:", tlsn_session.server_connection_state.cipher_suite);
+function decrypt_html(tlsn_session){
+	console.log("will decrypt cs:", tlsn_session.server_connection_state.cipher_suite);
 	var rv = tlsn_session.process_server_app_data_records();
-	//the worker below performs the equivalent of ---^
-	//The idea was to not freeze the UI while decrypting
-	//However, seems like FF's implementation (at least on Linux)is broken, because the worker still freezes the UI
-	/*
-	return new Promise(function(resolve, reject) {
-		var worker = new ChromeWorker("chrome://tlsnotary/content/decryption_worker.js");
-		console.log('loaded worker');
-		worker.onmessage = function(e){
-			console.log('Message received from worker');
-			worker.terminate();
-			resolve(e.data);
-		}
-		var obj = {'server_response_app_data':tlsn_session.server_response_app_data,
-		'server_connection_state':tlsn_session.server_connection_state,
-		'sfencrypted':tlsn_session.server_finished.encrypted,
-		'unexpected_server_app_data_count':tlsn_session.unexpected_server_app_data_count,
-		'cipher_suite':tlsn_session.server_connection_state.cipher_suite,
-		'enc_key':tlsn_session.server_connection_state.enc_key,
-		'IV':tlsn_session.server_connection_state.IV,
-		'hash_len':tlsn_session.server_connection_state.hash_len,
-		'seq_no':tlsn_session.server_connection_state.seq_no,
-		'mac_key':tlsn_session.server_connection_state.mac_key,
-		'tlsver':tlsn_session.server_connection_state.tlsver,
-		'mac_algo':tlsn_session.server_connection_state.mac_algo};
-		var path1 = thisaddon.getResourceURI("tlsn.js").spec;
-		var path2 = thisaddon.getResourceURI("tlsn_utils.js").spec
-		console.log('sending to worker');
-		worker.postMessage(obj);
-	}).
-	then(function(rv){ */
-		console.log('after worker responded');
-		var plaintext = rv[0];
-		var bad_mac = rv[1];
-		if (bad_mac) {
-			throw("ERROR! Audit not valid! Plaintext is not authenticated.");
-		}
-		console.log('1');
-		var plaintext_str = ba2str(plaintext);
-		console.log('2');
-		var plaintext_dechunked = dechunk_http(plaintext_str);
-		console.log('3');
-		var plaintext_gunzipped = gunzip_http(plaintext_dechunked);
-		console.log('4');
-		console.log('returning plaintext of length ' + plaintext_gunzipped.length);
-		return plaintext_gunzipped;
+	var plaintext = rv[0];
+	var bad_mac = rv[1];
+	if (bad_mac) {
+		throw("ERROR! Audit not valid! Plaintext is not authenticated.");
+	}
+	var plaintext_str = ba2str(plaintext);
+	var plaintext_dechunked = dechunk_http(plaintext_str);
+	var plaintext_gunzipped = gunzip_http(plaintext_dechunked);
+	console.log('returning plaintext of length ' + plaintext_gunzipped.length);
+	return plaintext_gunzipped;
 }
 
 
@@ -574,8 +534,16 @@ function start_audit(modulus, certhash, name, headers, ee_secret, ee_pad_secret,
 			throw('Failed to verify notary server signature');
 		}
 		console.log('finished sig verification');
-		var plaintext = decrypt_html(pms2, tlsn_session);
-		//return [plaintext, pms2, fullresp, tlsn_session.server_modulus, signature];
+		tlsn_session.auditor_secret = pms2.slice(0, tlsn_session.n_auditor_entropy);
+		tlsn_session.set_auditor_secret();
+		tlsn_session.set_master_secret_half(); //#without arguments sets the whole MS
+		tlsn_session.do_key_expansion(); //#also resets encryption connection state
+	
+		//#decrypt and verify mac of server finished as normal
+		if (tlsn_session.mac_check_server_finished() !== true){
+			throw('Failed to verify MAC for server finished');
+		}   
+		var plaintext = decrypt_html(tlsn_session);
 		return [tlsn_session.chosen_cipher_suite,
 				tlsn_session.client_random,
 				tlsn_session.server_random,
@@ -595,11 +563,6 @@ function start_audit(modulus, certhash, name, headers, ee_secret, ee_pad_secret,
 				waxwing_webnotary_modulus,
 				plaintext];
 	});
-	/*
-	.then(function(plaintext){
-		return [plaintext, pms2, fullresp, tlsn_session.server_modulus, signature];
-	});
-	*/
 }
 
 
@@ -1278,14 +1241,16 @@ function recv_socket(sckt, is_handshake){
 
 function TLSNClientSession(){}
 TLSNClientSession.prototype.__init__ = function(args){
-	var server = args.server;
-	var port = args.port;
-	var ccs = args.ccs;
-	var tlsver = args.tlsver;
-	if (typeof(server)==='undefined') server = null;
-	if (typeof(port)==='undefined') port = 443;
-	if (typeof(ccs)==='undefined') ccs = null;
-	if (typeof(tlsver)==='undefined') tlsver = null;
+	if (typeof(args)!=='undefined'){
+		var server = args.server;
+		var port = args.port;
+		var ccs = args.ccs;
+		var tlsver = args.tlsver;
+		if (typeof(server)==='undefined') server = null;
+		if (typeof(port)==='undefined') port = 443;
+		if (typeof(ccs)==='undefined') ccs = null;
+		if (typeof(tlsver)==='undefined') tlsver = null;
+	}
 	
     this.server_name = server;
     this.ssl_port = port;
@@ -2014,7 +1979,7 @@ TLSNClientSession.prototype.store_server_app_data_records = function(response){
 
 
 
-TLSNClientSession.prototype.mac_check_server_finished = function(plaintexts){
+TLSNClientSession.prototype.mac_check_server_finished = function(){
 	/*
         #Note server connection state has been reset after do_key_expansion
         #(which was done to correct server mac key), so state is initialised
@@ -2038,14 +2003,10 @@ TLSNClientSession.prototype.process_server_app_data_records = function(){
     the response is unauthenticated/corrupted).
     '''*/
 
-    var bad_record_mac = 0;
-    //#decrypt and verify mac of server finished as normal
-	if (this.mac_check_server_finished() !== true){
-		bad_record_mac += 1;
-	}   
     assert(this.server_response_app_data.length > 0, 
     	"Could not process the server response, no ciphertext found.");
     var plaintexts = [];
+    var bad_record_mac = 0;   
 
 	for(var i=0; i<this.server_response_app_data.length; ++i){
     	var ciphertext = this.server_response_app_data[i];
@@ -2155,9 +2116,9 @@ function rc4_crypt(data, key, state){
         x = y = 0;
     }
     else{
-        box = state[0];
-        x = state[1];
-        y = state[2];
+        box = state.slice(0, 256);
+        x = state[256];
+        y = state[257];
     }
         
     var out = [];
@@ -2170,7 +2131,7 @@ function rc4_crypt(data, key, state){
         box[y] = t;
         out.push( onebyte ^ box[(box[x] + box[y]) % 256] );
     }
-    var out_state = [box, x, y];
+    var out_state = [].concat(box, x, y);
     return [out, out_state];
 }
 

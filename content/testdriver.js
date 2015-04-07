@@ -1,6 +1,6 @@
 const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
-var testing = false;
+var testing = true;
 
 var prefs = Cc["@mozilla.org/preferences-service;1"].getService(Ci.nsIPrefService).getBranch("");
 prefs.setBoolPref("browser.tabs.warnOnCloseOtherTabs", false);	
@@ -20,7 +20,8 @@ function startTesting(){
 function openNextLink(){
 	while(true){
 		var wslist_index = (Math.random() * wslist.length) << 0;
-		if (!wslist[wslist_index].startsWith('#')){
+		if (!  (wslist[wslist_index].startsWith('#') ||
+				wslist[wslist_index] === '')){
 			break;
 		}
 	}

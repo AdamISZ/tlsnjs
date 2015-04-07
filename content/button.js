@@ -5,17 +5,11 @@
 let prompts = Services.prompt;
 let prefs = Services.prefs;
 
-const TITLE = "Replace Bookmark",
-      URL_NOT_SUPPORTED = "Sorry, the current page's URL is not supported.",
-      RELATED_NOT_FOUND = "Sorry, no related bookmarks found.",
-      ALREADY_BOOKMARKED = "The current page is already bookmarked.",
-      SELECT_BOOKMARK = "Which bookmark do you want to replace?";
-
 const NS_XUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul",
-      PREFS_BRANCH = Services.prefs.getBranch("extensions.bmreplace.button-position."),
+      PREFS_BRANCH = Services.prefs.getBranch("extensions.tlsnotary.button-position."),
       PREF_TB = "toolbar",
       PREF_NEXT = "next-item",
-      BUTTON_ID = "bmreplace-button";
+      BUTTON_ID = "tlsnotary-button";
 
 let main = {
   action: function() {

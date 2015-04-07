@@ -152,12 +152,12 @@ function startRecording(callback){
 	var certsha256;
 	get_certificate(server).then(function(cert){
 		console.log('got certificate');
-		var b64cert = b64encode(cert);
-		if (! verifyCert(b64cert)){
+		var cert_obj = getCertObject(cert);
+		if (! verifyCert(cert_obj)){
 			alert("This website cannot be audited by TLSNotary because it presented an untrusted certificate");
 			return;
 		}
-		modulus = getModulus(b64cert);
+		modulus = getModulus(cert_obj);
 		certsha256 = sha256(cert);
 		random_uid = Math.random().toString(36).slice(-6);
 		//loop prepare_pms 10 times until succeeds
@@ -210,10 +210,8 @@ function save_session_and_open_html(args, server){
 	var server_random = args[2];
 	var pms1 = args[3];
 	var pms2 = args[4];
-	
 	var server_cert_length = args[5];
 	var server_cert = args[6];
-	
 	var tlsver = args[7];
 	var initial_tlsver = args[8];
 	var fullresp_length = args[9];
@@ -226,29 +224,18 @@ function save_session_and_open_html(args, server){
 	var waxwing_webnotary_modulus = args[16];
 	var html = args[17];
 	
-	var localDir = Cc["@mozilla.org/file/directory_service;1"].
-			getService(Ci.nsIProperties).get("ProfD", Ci.nsIFile);
-
-	localDir.append("TLSNotary");
-	 if (!localDir.exists() || !localDir.isDirectory()) {
-		// read and write permissions to owner and group, read-only for others.
-		localDir.create(Ci.nsIFile.DIRECTORY_TYPE, 0774);
-	}
-
-	var today = new Date();
-	var time = today.getFullYear()+'-'+("00"+(today.getMonth()+1)).slice(-2)+'-'+("00"+today.getDate()).slice(-2)+'-'+
-	("00"+today.getHours()).slice(-2)+':'+("00"+today.getMinutes()).slice(-2)+':'+("00"+today.getSeconds()).slice(-2);
-
+	var localDir = getTLSNdir();
+	var time = getTime();
 	localDir.append(time+'-'+server); 
 	localDir.create(Ci.nsIFile.DIRECTORY_TYPE, 0774);
 
 	var path_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
 	path_html.initWithPath(localDir.path);
-	path_html.append('page.html')
+	path_html.append('page.html');
 	 //see "Byte order mark"
 	return OS.File.writeAtomic(path_html.path, ba2ua([0xef, 0xbb, 0xbf]))
 	.then(function(){
-		OS.File.writeAtomic(path_html.path, ba2ua(str2ba(html)))
+		return OS.File.writeAtomic(path_html.path, ba2ua(str2ba(html)));
 	})
 	.then(function(){
 		var path_tlsn = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
@@ -276,19 +263,16 @@ function save_session_and_open_html(args, server){
 			waxwing_webnotary_modulus
 		)));
 	})
-	
-	
 	.then(function(){
 		gBrowser.addTab(path_html.path);
 	});
 }
 	
-
-function verify_tlsn(path){
-	//TODO open and read binary data
-	var data; // data is an array of numbers
+function verify_tlsn_and_show_html(path){
+	OS.File.read(path).then(function(imported_data){
+	var data = ua2ba(imported_data);
 	var offset = 0;
-	if (ba2tr(data.slice(offset, offset+=29)) !== "tlsnotary notarization file\n\n"){
+	if (ba2str(data.slice(offset, offset+=29)) !== "tlsnotary notarization file\n\n"){
 		throw('wrong header');
 	}
 	if(data.slice(offset, offset+=2).toString() !== [0x00, 0x01].toString()){
@@ -305,45 +289,97 @@ function verify_tlsn(path){
 	var tlsver_initial = data.slice(offset, offset+=2);
 	var response_len = ba2int(data.slice(offset, offset+=8));
 	var response = data.slice(offset, offset+=response_len);
-	var IV_after_finished_len = ba2int(data.slice(offset, offset+=2));
-	var IV_after_finished = data.slice(offset, offset+=IV_after_finished_len);
+	var IV_len = ba2int(data.slice(offset, offset+=2));
+	var IV = data.slice(offset, offset+=IV_len);
 	var sig_len = ba2int(data.slice(offset, offset+=2));
 	var sig = data.slice(offset, offset+=sig_len);
 	var commit_hash = data.slice(offset, offset+=32);
 	var notary_pubkey = data.slice(offset, offset+=sig_len);
 	assert (data.length === offset, 'invalid tlsn length');
 	
+	var cert_obj = getCertObject(cert);
+	var commonName = cert_obj.commonName;
 	//verify cert
-	var b64cert = b64encode(cert);
-	if (!verifyCert(b64cert)){
+	if (!verifyCert(cert_obj)){
 		throw ('certificate verification failed');
 	}
-	var modulus = getModulus(b64cert);
+	var modulus = getModulus(cert_obj);
 	//verify commit hash
-	if (sha256(response).toString !== commit_hash){
+	if (sha256(response).toString() !== commit_hash.toString()){
 		throw ('commit hash mismatch');
 	}
 	//verify sig
+	var signed_data = sha256([].concat(commit_hash, pms2, modulus));
+	if (!verify_commithash_signature(signed_data, sig, notary_pubkey)){
+		throw('notary signature verification failed');
+	}
+	//decrypt html and check MAC
+	var s = new TLSNClientSession();
+	s.__init__();
+	s.unexpected_server_app_data_count = response.slice(0,1);
+	s.chosen_cipher_suite = cs;
+	s.client_random = cr;
+	s.server_random = sr;
+	s.auditee_secret = pms1.slice(2, 2+s.n_auditee_entropy);
+	s.initial_tlsver = tlsver_initial;
+	s.tlsver = tlsver;
+	s.server_modulus = modulus;
+	s.set_auditee_secret();
+	s.auditor_secret = pms2.slice(0, s.n_auditor_entropy);
+	s.set_auditor_secret();
+	s.set_master_secret_half(); //#without arguments sets the whole MS
+	s.do_key_expansion(); //#also resets encryption connection state
+	s.store_server_app_data_records(response.slice(1));
+	s.IV_after_finished = IV;
+	s.server_connection_state.seq_no += 1;
+	s.server_connection_state.IV = s.IV_after_finished;
 	
+	var html = decrypt_html(s);
 	
-	
-	
+	var localDir = getTLSNdir();
+	var time= getTime();
+	localDir.append(time+'-'+commonName+'-IMPORTED'); 
+	localDir.create(Ci.nsIFile.DIRECTORY_TYPE, 0774);
+
+	var path_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+	path_html.initWithPath(localDir.path);
+	path_html.append('page.html');
+	 //see "Byte order mark"
+	return OS.File.writeAtomic(path_html.path, ba2ua([0xef, 0xbb, 0xbf]))
+	.then(function(){
+		OS.File.writeAtomic(path_html.path, ba2ua(str2ba(html)))
+	})
+	.then(function(){
+		var path_tlsn = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+		path_tlsn.initWithPath(localDir.path);
+		path_tlsn.append(time+'-'+commonName+'.tlsn');
+		return OS.File.writeAtomic(path_tlsn.path, imported_data);
+	})
+	.then(function(){
+		gBrowser.addTab(path_html.path);
+	});		
+	});
 }
 
-
-
-//extracts modulus from PEM certificate
-function getModulus(certBase64){
-	const nsASN1Tree = "@mozilla.org/security/nsASN1Tree;1";
-	const nsIASN1Tree = Ci.nsIASN1Tree;
+//cert is an array of numbers
+//return a cert object 
+function getCertObject(cert){
 	const nsIX509CertDB = Ci.nsIX509CertDB;
 	const nsX509CertDB = "@mozilla.org/security/x509certdb;1";
 	var certdb = Cc[nsX509CertDB].getService(nsIX509CertDB);
-	var cert = certdb.constructX509FromBase64(certBase64);
+	var cert_obj = certdb.constructX509FromBase64(b64encode(cert));
+	return cert_obj;
+}
+
+
+//extracts modulus from PEM certificate
+function getModulus(cert_obj){
+	const nsASN1Tree = "@mozilla.org/security/nsASN1Tree;1";
+	const nsIASN1Tree = Ci.nsIASN1Tree;
 	var hexmodulus = "";
 	
 	var certDumpTree = Cc[nsASN1Tree].createInstance(nsIASN1Tree);
-	certDumpTree.loadASN1Structure(cert.ASN1Structure);
+	certDumpTree.loadASN1Structure(cert_obj.ASN1Structure);
 	var modulus_str = certDumpTree.getDisplayData(12);
 	if (! modulus_str.startsWith( "Modulus (" ) ){
 		//most likely an ECC certificate
@@ -363,14 +399,14 @@ function getModulus(certBase64){
 }
 
 
-function verifyCert(certBase64){
+//verify the certificate against FF's certdb
+function verifyCert(cert_obj){
+	const nsIX509Cert = Ci.nsIX509Cert;
 	const nsIX509CertDB = Ci.nsIX509CertDB;
 	const nsX509CertDB = "@mozilla.org/security/x509certdb;1";
-	const nsIX509Cert = Ci.nsIX509Cert;
 	let certdb = Cc[nsX509CertDB].getService(nsIX509CertDB);
-	let cert = certdb.constructX509FromBase64(certBase64);
 	let a = {}, b = {};
-	let retval = certdb.verifyCertNow(cert, nsIX509Cert.CERT_USAGE_SSLServerWithStepUp, nsIX509CertDB.FLAG_LOCAL_ONLY, a, b);
+	let retval = certdb.verifyCertNow(cert_obj, nsIX509Cert.CERT_USAGE_SSLServerWithStepUp, nsIX509CertDB.FLAG_LOCAL_ONLY, a, b);
 	if (retval === 0){ 		//success
 		return true;
 	}
