@@ -23,6 +23,8 @@ function $(node, childId) {
   }
 }
 
+var button;
+var menupopup;
 function loadIntoWindow(window) {
   if (!window) return;
   
@@ -31,14 +33,35 @@ function loadIntoWindow(window) {
   
   if (toolbox) { // navigator window
     // add to palette
-    let button = doc.createElement("toolbarbutton");
+    button = doc.createElement("toolbarbutton");
     button.setAttribute("id", BUTTON_ID);
     button.setAttribute("label", "TLSNotary");
+    button.setAttribute("type", "menu");
     button.setAttribute("class", "toolbarbutton-1 chromeclass-toolbar-additional");
     button.setAttribute("tooltiptext", "TLSNotary menu");
     button.style.listStyleImage = "url(" + icon + ")";
     button.addEventListener("command", main.action, false);
     toolbox.palette.appendChild(button);
+    
+    let mpu = doc.createElement("menupopup");
+    mpu.setAttribute("id","tlsnmpu");
+     let mi1 = doc.createElement("menuitem");
+	mi1.setAttribute("label", 'Notarize this page');
+	mi1.setAttribute("value","blah");
+	mi1.addEventListener("command",main.notarize, false)
+	mpu.appendChild(mi1);
+	 let mi2 = doc.createElement("menuitem");
+	mi2.setAttribute("label", 'Verify tlsn file');
+	mi2.setAttribute("value","blah");
+	mi2.addEventListener("command",main.verify, false)
+	mpu.appendChild(mi2);
+	 let mi3 = doc.createElement("menuitem");
+	mi3.setAttribute("label", 'Manage files');
+	mi3.setAttribute("value","blah");
+	mi3.addEventListener("command",main.manage, false)
+	mpu.appendChild(mi3);
+    
+	button.appendChild(mpu);
     
     // move to saved toolbar position
     let {toolbarId, nextItemId} = main.getPrefs(),

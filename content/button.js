@@ -12,7 +12,7 @@ const NS_XUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul",
       BUTTON_ID = "tlsnotary-button";
 
 let main = {
-  action: function() {
+  notarize: function() {
 	  if (testing){
 		  startTesting();
 	  }
@@ -20,6 +20,21 @@ let main = {
 		startRecording();
 	}
   },
+  verify: function() {
+	const nsIFilePicker = Components.interfaces.nsIFilePicker;
+	var fp = Components.classes["@mozilla.org/filepicker;1"]
+				   .createInstance(nsIFilePicker);
+	fp.init(window, "Select the tlsn file you want to verify", nsIFilePicker.modeOpen);
+	var rv = fp.show();
+	if (rv == nsIFilePicker.returnOK || rv == nsIFilePicker.returnReplace) {
+	  var path = fp.file.path;
+	  verify_tlsn_and_show_html(path);
+	}
+  },
+  manage: function() {
+	alert('Not implemented yet')
+  },
+  
   
   /*
    * @return {toolbarId, nextItemId}
