@@ -19,6 +19,33 @@ var btoa = win.btoa;
 var atob = win.atob;
 
 
+function openManager(){
+// Open iterator
+  let iterator = new OS.File.DirectoryIterator(getTLSNdir().path);
+  // Iterate through the directory
+  let subdirs = [];
+  let promise = iterator.forEach(
+    function onEntry(entry) {
+	subdirs.push(entry);
+    }
+  );
+  
+  // Finally, close the iterator
+  promise.then(
+    function onSuccess() {
+      iterator.close();
+      for (i=0; i< subdirs.length; i++){
+	  alert(subdirs[i].path);
+      }
+      gBrowser.addTab("chrome://tlsnotary/content/manager.html")
+    },
+    function onFailure(reason) {
+      iterator.close();
+      throw reason;
+    }
+  );
+}
+
 
 function init(){
 	//sometimes gBrowser is not available
@@ -357,6 +384,7 @@ function verify_tlsn_and_show_html(path){
 	})
 	.then(function(){
 		gBrowser.addTab(path_html.path);
+		alert("The html page is verified GENUINE by insert_notary_name_and_id");
 	});		
 	});
 }

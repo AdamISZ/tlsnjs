@@ -1,6 +1,6 @@
 const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
-var testing = true;
+var testing = false;
 
 var prefs = Cc["@mozilla.org/preferences-service;1"].getService(Ci.nsIPrefService).getBranch("");
 prefs.setBoolPref("browser.tabs.warnOnCloseOtherTabs", false);	
