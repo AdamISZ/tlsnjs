@@ -31,17 +31,17 @@ let main = {
    * @return {toolbarId, nextItemId}
    */
   getPrefs: function() {
-    try {
-      return {
-        toolbarId: PREFS_BRANCH.getCharPref(PREF_TB),
-        nextItemId: PREFS_BRANCH.getCharPref(PREF_NEXT)
-      };
-    } catch(e) {
+    //try {
+    //  return {
+    //    toolbarId: PREFS_BRANCH.getCharPref(PREF_TB),
+    //    nextItemId: PREFS_BRANCH.getCharPref(PREF_NEXT)
+    //  };
+    //} catch(e) {
       return { // default position
         toolbarId: "nav-bar",
         nextItemId: "bookmarks-menu-button-container"
       };
-    }
+    //}
   },
   
   setPrefs: function(toolbarId, nextItemId) {

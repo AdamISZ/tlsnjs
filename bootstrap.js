@@ -33,11 +33,23 @@ function loadIntoWindow(window) {
     // add to palette
     let button = doc.createElement("toolbarbutton");
     button.setAttribute("id", BUTTON_ID);
+    button.setAttribute("type","menu-button")
     button.setAttribute("label", "TLSNotary");
     button.setAttribute("class", "toolbarbutton-1 chromeclass-toolbar-additional");
     button.setAttribute("tooltiptext", "TLSNotary menu");
     button.style.listStyleImage = "url(" + icon + ")";
     button.addEventListener("command", main.action, false);
+    let mpu = doc.createElement("menupopup");
+    mpu.setAttribute("id","tlsnmpu");
+    let menuentries = ['Notarize this page','Verify tlsn file', 'Manage files'];
+    for (var i=0; i < menuentries.length; i++){
+      let mi = doc.createElement("menuitem");
+      mi.setAttribute("label",menuentries[i]);
+      mi.setAttribute("value","blah");
+      mi.addEventListener("command",main.action, false)
+      mpu.appendChild(mi);
+    }
+    button.appendChild(mpu);
     toolbox.palette.appendChild(button);
     
     // move to saved toolbar position
