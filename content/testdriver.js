@@ -1,6 +1,6 @@
 const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
-var testing = true;
+var testing = false;
 
 var prefs = Cc["@mozilla.org/preferences-service;1"].getService(Ci.nsIPrefService).getBranch("");
 prefs.setBoolPref("browser.tabs.warnOnCloseOtherTabs", false);	
@@ -30,6 +30,11 @@ function openNextLink(){
     var auditeeBrowser = gBrowser.addTab(url);
     gBrowser.addProgressListener(tlsnLoadListener);
     gBrowser.removeAllTabsBut(auditeeBrowser);
+    return;
+    //remove tabs ~ every 5th run. We dont want tabs immediately closed so we could examine html while the test is running
+    if ((Math.random()*5 << 0) === 4){
+		gBrowser.removeAllTabsBut(auditeeBrowser);
+	}
 }
 
 

@@ -28,10 +28,6 @@ function init(){
 		return;
 	}	
 	startListening();
-	if (envvar.get("TLSNOTARY_TEST") == "true"){
-		setTimeout(tlsnInitTesting,3000);
-		testingMode = true;
-	}
 }
 
 function popupShow(text) {
@@ -203,6 +199,70 @@ function startRecording(callback){
 	});
 }
 
+
+//create the final html that prover and verifier will see in the tab and return 
+//its path.
+function create_final_html(html_with_headers, server_name, is_imported){
+	if (typeof(is_imported) === "undefined"){
+		is_imported = false;
+	}
+	var rv = html_with_headers.split('\r\n\r\n');
+	var headers = rv[0];
+	var html = rv[1]; 
+	var localDir = getTLSNdir();
+	var time = getTime();
+	var imported_str = "";
+	if (is_imported){
+		imported_str = "-IMPORTED";
+	}
+	localDir.append(time+'-'+server_name+imported_str); 
+	localDir.create(Ci.nsIFile.DIRECTORY_TYPE, 0774);
+
+	var final_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+	var path_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+	path_html.initWithPath(localDir.path);
+	path_html.append('html.html');
+	 //see "Byte order mark"
+	return OS.File.writeAtomic(path_html.path, ba2ua([0xef, 0xbb, 0xbf]))
+	.then(function(){
+		return OS.File.writeAtomic(path_html.path, ba2ua(str2ba(html)));
+	})
+	.then(function(){
+		final_html.initWithPath(localDir.path);
+		final_html.append('final.html');
+		return OS.File.writeAtomic(final_html.path, ba2ua([0xef, 0xbb, 0xbf]));
+	})
+	.then(function(){
+	//TODO: split into 3 sections. Header showing n10n succss + domain name
+	//Option to show http headers and raw html
+	//the rendered html
+		var finalhtml = ' \
+		<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" \
+			"http://www.w3.org/TR/html4/strict.dtd"> \
+		<html lang="en"> \
+		  <head> \
+			<meta http-equiv="content-type" content="text/html; charset=utf-8"> \
+			<title>title</title> \
+			<link rel="stylesheet" type="text/css" href="style.css"> \
+			<script type="text/javascript" src="script.js"></script> \
+		  </head> \
+		  <body> \
+				<h1>TLSNotary successfully verified that the webpage below was received from '
+				+server_name+
+				'</h1> \
+				<iframe src="'
+				+path_html.path+
+				'" height="500" width="100%"></iframe> \
+		  </body> \
+		</html>';
+		return OS.File.writeAtomic(final_html.path, ba2ua(str2ba(finalhtml)));
+	})
+	.then(function(){
+		return localDir;
+	});
+}
+
+
 function save_session_and_open_html(args, server){
 	assert (args.length === 18, "wrong args length");
 	var cipher_suite = args[0];
@@ -222,25 +282,16 @@ function save_session_and_open_html(args, server){
 	var signature = args[14];
 	var commit_hash = args[15];
 	var waxwing_webnotary_modulus = args[16];
-	var html = args[17];
-	
-	var localDir = getTLSNdir();
-	var time = getTime();
-	localDir.append(time+'-'+server); 
-	localDir.create(Ci.nsIFile.DIRECTORY_TYPE, 0774);
+	var html_with_headers = args[17];
 
-	var path_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
-	path_html.initWithPath(localDir.path);
-	path_html.append('page.html');
-	 //see "Byte order mark"
-	return OS.File.writeAtomic(path_html.path, ba2ua([0xef, 0xbb, 0xbf]))
-	.then(function(){
-		return OS.File.writeAtomic(path_html.path, ba2ua(str2ba(html)));
-	})
-	.then(function(){
+	var commonName = getCertObject(server_cert).commonName;
+	var localDir;
+	create_final_html(html_with_headers, commonName)
+	.then(function(dir){
+		localDir = dir;
 		var path_tlsn = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
 		path_tlsn.initWithPath(localDir.path);
-		path_tlsn.append(time+'-'+server+'.tlsn');
+		path_tlsn.append(commonName+'.tlsn');
 		return OS.File.writeAtomic(path_tlsn.path, ba2ua([].concat(
 			str2ba('tlsnotary notarization file\n\n'),
 			[0x00, 0x01],
@@ -264,10 +315,23 @@ function save_session_and_open_html(args, server){
 		)));
 	})
 	.then(function(){
-		gBrowser.addTab(path_html.path);
+		var final_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+		final_html.initWithPath(localDir.path);
+		final_html.append('final.html');
+		if (testing){
+			gBrowser.addTab(final_html.path);
+			return;
+		}
+		//else not testing
+		toggle_offline();
+		var t = gBrowser.addTab(final_html.path);
+		t.addEventListener("load", function load(){
+			toggle_offline();
+			t.removeEventListener("load", load, false)});
 	});
 }
 	
+
 function verify_tlsn_and_show_html(path){
 	OS.File.read(path).then(function(imported_data){
 	var data = ua2ba(imported_data);
@@ -334,29 +398,25 @@ function verify_tlsn_and_show_html(path){
 	s.server_connection_state.seq_no += 1;
 	s.server_connection_state.IV = s.IV_after_finished;
 	
-	var html = decrypt_html(s);
-	
-	var localDir = getTLSNdir();
-	var time= getTime();
-	localDir.append(time+'-'+commonName+'-IMPORTED'); 
-	localDir.create(Ci.nsIFile.DIRECTORY_TYPE, 0774);
-
-	var path_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
-	path_html.initWithPath(localDir.path);
-	path_html.append('page.html');
-	 //see "Byte order mark"
-	return OS.File.writeAtomic(path_html.path, ba2ua([0xef, 0xbb, 0xbf]))
-	.then(function(){
-		OS.File.writeAtomic(path_html.path, ba2ua(str2ba(html)))
-	})
-	.then(function(){
+	var html_with_headers = decrypt_html(s);
+	var localDir;
+	create_final_html(html_with_headers, commonName, true)
+	.then(function(dir){
+		localDir = dir;
 		var path_tlsn = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
 		path_tlsn.initWithPath(localDir.path);
-		path_tlsn.append(time+'-'+commonName+'.tlsn');
+		path_tlsn.append(commonName+'.tlsn');
 		return OS.File.writeAtomic(path_tlsn.path, imported_data);
 	})
 	.then(function(){
-		gBrowser.addTab(path_html.path);
+		var final_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+		final_html.initWithPath(localDir.path);
+		final_html.append('final.html');
+		toggle_offline();
+		var t = gBrowser.addTab(final_html.path);
+		t.addEventListener("load", function load(){
+			toggle_offline();
+			t.removeEventListener("load", load, false)});
 	});		
 	});
 }
@@ -415,13 +475,6 @@ function verifyCert(cert_obj){
 	}
 }
 
-
-function go_offline_for_a_moment(){
-	win.document.getElementById("goOfflineMenuitem").doCommand();
-	setTimeout(function(){
-			win.document.getElementById("goOfflineMenuitem").doCommand();
-		}, 1000);
-}
 
 
 
@@ -483,6 +536,10 @@ var	myListener =
         }    
     }
 };
+
+function toggle_offline(){
+	window.document.getElementById("goOfflineMenuitem").doCommand();
+}
 
 //This must be at the bottom, otherwise we'd have to define each function
 //before it gets used.
