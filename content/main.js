@@ -7,7 +7,7 @@ Cu.import('resource://gre/modules/Services.jsm');
 Cu.import("resource://gre/modules/osfile.jsm")
 var dict_of_status = {};
 var dict_of_httpchannels = {};
-
+var tlsn_files = [];
 var win = Cc['@mozilla.org/appshell/window-mediator;1']
 	.getService(Ci.nsIWindowMediator).getMostRecentWindow('navigator:browser');
 var gBrowser = win.gBrowser;
@@ -20,30 +20,7 @@ var atob = win.atob;
 
 
 function openManager(){
-// Open iterator
-  let iterator = new OS.File.DirectoryIterator(getTLSNdir().path);
-  // Iterate through the directory
-  let subdirs = [];
-  let promise = iterator.forEach(
-    function onEntry(entry) {
-	subdirs.push(entry);
-    }
-  );
-  
-  // Finally, close the iterator
-  promise.then(
-    function onSuccess() {
-      iterator.close();
-      for (i=0; i< subdirs.length; i++){
-	  alert(subdirs[i].path);
-      }
-      gBrowser.addTab("chrome://tlsnotary/content/manager.html")
-    },
-    function onFailure(reason) {
-      iterator.close();
-      throw reason;
-    }
-  );
+	gBrowser.addTab("chrome://tlsnotary/content/manager.html");
 }
 
 
