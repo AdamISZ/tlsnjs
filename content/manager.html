@@ -23,12 +23,14 @@
 </table>
 </div>
 <div id="mydata">
-<b>Current data in the system ...</b>
+<b>Existing notarization (.tlsn) files ...</b>
 <table id="myTableData"  border="1" cellpadding="2">
     <tr>
-        <td>&nbsp;</td>
-        <td><b>Name</b></td>
-        <td><b>Age</b></td>
+        <td>Filename</td>
+        <td><b>Last modified</b></td>
+        <td><b>Verified</b></td>
+	<td><b>Verifier identity</b></td>
+	
     </tr>
 </table>
 &nbsp;
@@ -59,12 +61,20 @@ function addRow() {
  
 }
 
-function addRowTLSN(n,a){
+function addRowTLSN(filename,lm_date,verified,verifier){
     var table = document.getElementById("myTableData");
     var rowCount = table.rows.length;
     var row = table.insertRow(rowCount);
-    row.insertCell(0).innerHTML = n;
-    row.insertCell(1).innerHTML = a;
+    row.insertCell(0).innerHTML = filename;
+    row.insertCell(1).innerHTML = lm_date;
+    if (verified){
+	tbi = 'YES';
+    }
+    else {
+        tbi = 'NO';
+    }
+    row.insertCell(2).innerHTML = tbi;
+    row.insertCell(3).innerHTML = verifier;
 }
 function deleteRow(obj) {
       
@@ -101,15 +111,26 @@ function addTable() {
 
 function loadManager() {
    tlsn_files = [];
+   var tlsn_lmdates = [];
 Cu2.import("resource://gre/modules/osfile.jsm");
     // Open iterator
- let thepath = getTLSNdir();
- console.log("Path found was: "+thepath);	
-  var iterator = new OS.File.DirectoryIterator(thepath.path);
+ //let thepath = getTLSNdir();
+ //console.log("Path found was: "+thepath);	
+  let iterator = new OS.File.DirectoryIterator(getTLSNdir().path);
    //Iterate through the directory
   let promise = iterator.forEach(
     function onEntry(entry) {
 	tlsn_files.push(entry);
+	
+	let promise2 = OS.File.stat(entry.path);
+	promise2.then(
+	function onSuccess(info) { // |info| is an instance of |OS.File.Info|
+	    console.log("last mod time: " + info.lastModificationDate);
+	    tlsn_lmdates.push(info.lastModificationDate);
+	},
+	function onFailure(reason) {
+	  console.log("File access failure");
+	})
     }
   );
   
@@ -118,7 +139,7 @@ Cu2.import("resource://gre/modules/osfile.jsm");
     function onSuccess() {
       iterator.close();
       for ( i=0; i < tlsn_files.length; i++){
-	addRowTLSN(tlsn_files[i].path,'3');
+	addRowTLSN(tlsn_files[i].path,tlsn_lmdates[i],true,'tlsnotarygroup');
       }
       
     },
