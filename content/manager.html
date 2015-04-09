@@ -41,6 +41,7 @@
 to create a Table and add some data using JavaScript
 </div>
 
+<script type="text/javascript;version=1.8" src="main.js"></script>
 <script type="text/javascript;version=1.8" src="tlsn_utils.js"></script>
 <script type="text/javascript;version=1.8">
 
@@ -139,7 +140,26 @@ Cu2.import("resource://gre/modules/osfile.jsm");
     function onSuccess() {
       iterator.close();
       for ( i=0; i < tlsn_files.length; i++){
-	addRowTLSN(tlsn_files[i].path,tlsn_lmdates[i],true,'tlsnotarygroup');
+        //sanity check; all files here should be directories;
+	//if the user has placed any other files there, ignore them.
+	if (!tlsn_files[i].isDir){
+	    console.log("entry was not a directory");
+	    continue;
+	}
+	addRowTLSN(tlsn_files[i].name,tlsn_lmdates[i],true,'tlsnotarygroup');
+	//build file path  of *.tlsn within the directory
+	var basepath = tlsn_files[i].path;
+	console.log("basepath is: "+basepath);
+	var dirname = OS.Path.basename(basepath);
+	console.log("dirname is: "+dirname);
+	
+	if (dirname.match("-IMPORTED$")=="-IMPORTED"){
+	    dirname = dirname.slice(0,-"-IMPORTED".length);
+	}
+	console.log("Got dirname: " + dirname);
+	var tlsn_file = OS.Path.join(basepath, dirname+'.tlsn');
+	console.log("Constructed file path: "+tlsn_file);
+	verify_tlsn_and_show_html(tlsn_file);
       }
       
     },
