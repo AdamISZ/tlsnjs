@@ -313,7 +313,8 @@ function save_session_and_open_html(args, server){
 				label: 'View raw HTML with HTTP headers',
 				accessKey: '',
 				callback: function(){
-					gBrowser.addTab(raw.path);
+					var nt = gBrowser.addTab(raw.path);
+					gBrowser.selectedTab = nt;
 					//throwing an error prevents notification from closing acc.to 
 					//https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XUL/Method/appendNotification
 					throw new Error('prevent notification close');
@@ -404,13 +405,28 @@ function verify_tlsn_and_show_html(path){
 	.then(function(){
 		var final_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
 		final_html.initWithPath(localDir.path);
-		final_html.append('final.html');
-		toggle_offline();
+		final_html.append('html.html');
+		block_urls.push(final_html.path);
 		var t = gBrowser.addTab(final_html.path);
-		t.addEventListener("load", function load(){
-			toggle_offline();
-			t.removeEventListener("load", load, false)});
 		gBrowser.selectedTab = t;
+		t.addEventListener("load", function(){
+			var box = gBrowser.getNotificationBox();
+			var priority = box.PRIORITY_INFO_HIGH;
+			var message = 'TLSNotary successfully verified that the webpage below was received from '+commonName;
+			var icon = 'chrome://tlsnotary/content/icon.png';
+			var buttons = [{
+				label: 'View raw HTML with HTTP headers',
+				accessKey: '',
+				callback: function(){
+					var nt = gBrowser.addTab(raw.path);
+					gBrowser.selectedTab = nt;
+					//throwing an error prevents notification from closing acc.to 
+					//https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XUL/Method/appendNotification
+					throw new Error('prevent notification close');
+				}
+			}];
+			box.appendNotification(message, null, icon, priority, buttons);
+		}, true);
 	});		
 	});
 }
