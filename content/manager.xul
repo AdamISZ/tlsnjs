@@ -1,0 +1,65 @@
+<?xml version="1.0"?>
+
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+
+<window id="tlsn-file-window" title="TLSNotary File Manager"
+        xmlns:html="http://www.w3.org/1999/xhtml"
+        xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+
+  <script src="main.js"></script>
+  <script src="CryptoJS/components/core.js"></script>
+  <script src="CryptoJS/components/md5.js"></script>
+  <script src="CryptoJS/components/evpkdf.js"></script>
+  <script src="CryptoJS/components/enc-base64.js"></script>
+  <script src="CryptoJS/components/sha1.js"></script>
+  <script src="CryptoJS/components/sha256.js"></script>
+  <script src="CryptoJS/components/hmac.js"></script>
+  <script src="CryptoJS/components/cipher-core.js"></script>
+  <script src="CryptoJS/components/aes.js"></script>
+  <script src="CryptoJS/components/pad-nopadding.js"></script>
+  <script src="jsbn.js"></script>
+  <script src="jsbn2.js"></script>
+  <script src="pako.js"></script>
+  <script src="tlsn.js"></script>
+  <script src="tlsn_utils.js"></script> 
+  <script src="manager.js"></script>
+<html:p>
+ <html:head>
+    <html:title>Manage your TLSNotary notarization files.</html:title>
+</html:head>
+<html:body onload="loadManager()">
+<html:div id="myform">
+<html:input type="button" id="create" value="Refresh" onclick="loadManager()"></html:input>
+<html:b>Simple form with name and age ...</html:b>
+<html:table>
+    <html:tr>
+        <html:td>Name:</html:td>
+        <html:td><html:input type="text" id="name"></html:input></html:td>
+    </html:tr>
+    <html:tr>
+        <html:td>Age:</html:td>
+        <html:td><html:input type="text" id="age">
+        </html:input></html:td>
+    </html:tr>
+    <html:tr>
+        <html:td>&#160;</html:td>
+        <html:td>&#160;</html:td>
+    </html:tr>
+</html:table>
+</html:div>
+<html:div id="mydata">
+<html:b>Existing notarization (.tlsn) files ...</html:b>
+<html:table id="myTableData"  border="1" cellpadding="2">
+    <html:tr>
+        <html:td>Filename</html:td>
+        <html:td><html:b>Last modified</html:b></html:td>
+        <html:td><html:b>Verified</html:b></html:td>
+	<html:td><html:b>Verifier identity</html:b></html:td>
+	
+    </html:tr>
+</html:table>
+</html:div>
+</html:body>
+</html:p>
+
+</window>

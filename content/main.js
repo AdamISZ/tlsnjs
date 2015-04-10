@@ -18,11 +18,10 @@ var alert = win.alert;
 var btoa = win.btoa;
 var atob = win.atob;
 
-
 function openManager(){
-	gBrowser.addTab("chrome://tlsnotary/content/manager.html");
+	window.open("chrome://tlsnotary/content/manager.xul","Manage TLSN files",
+	"chrome,centerscreen");
 }
-
 
 function init(){
 	//sometimes gBrowser is not available
