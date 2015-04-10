@@ -31,20 +31,6 @@ function init(){
 	startListening();
 }
 
-function popupShow(text) {
-	var notify  = new PopupNotifications(gBrowser,
-                    win.document.getElementById("notification-popup"),
-                    win.document.getElementById("notification-popup-box"));
-	notify.show(gBrowser.selectedBrowser, "tlsnotary-popup", text,
-	null, /* anchor ID */
-	{
-	  label: "Close this notification",
-	  accessKey: "C",
-	  callback: function() {},
-	},
-	null  /* secondary action */
-	);
-}
 
 /*Show the notification with default buttons (usebutton undefined), 'AUDIT' and 'FINISH'
 or with just the AUDIT button (usebutton true or truthy) or no buttons (usebutton false) */
@@ -144,7 +130,10 @@ function startRecording(callback){
 		headers += uploaddata;
 	}
 	var server = headers.split('\r\n')[1].split(':')[1].replace(/ /g,'');
-	notBarShow("Audit is underway, please be patient.",false);  
+	
+	eachWindow(unloadFromWindow);
+	icon =  "chrome://tlsnotary/content/icon_spin.gif";
+	eachWindow(loadIntoWindow);
 	  
 	var modulus;
 	var certsha256;
@@ -193,9 +182,15 @@ function startRecording(callback){
 		if (testing){
 			callback();
 		}
+		eachWindow(unloadFromWindow);
+		icon = "chrome://tlsnotary/content/icon.png";
+		eachWindow(loadIntoWindow);
 	})
 	.catch(function(err){
 	 //TODO need to get a decent stack trace
+	 	eachWindow(unloadFromWindow);
+		icon =  "chrome://tlsnotary/content/icon.png";
+		eachWindow(loadIntoWindow);
 		console.log('There was an error: ' + err);
 		alert('There was an error: ' + err);
 	});

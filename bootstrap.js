@@ -142,7 +142,8 @@ function windowWatcher (subject, topic) {
 
 function startup(data, reason) AddonManager.getAddonByID(data.id, function(addon) {
   thisaddon = addon;
-  icon = addon.getResourceURI("icon.png").spec;
+  //icon = addon.getResourceURI("icon.png").spec;
+  icon = "chrome://tlsnotary/content/icon.png";
   // existing windows
   eachWindow(loadIntoWindow);
   // new windows
