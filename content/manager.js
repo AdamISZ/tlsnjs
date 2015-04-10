@@ -5,7 +5,7 @@ var tlsn_files = [];
 var tlsn_lmdates = [];
 
 
-function addRow(filename,lm_date,verified,verifier,html_link){
+function addNewRow(filename,lm_date,verified,verifier,html_link){
     var table = document.getElementById("myTableData");
     var rowCount = table.rows.length;
     var row = table.insertRow(rowCount);
@@ -72,7 +72,7 @@ function loadManager() {
 		console.log("tlsn file was missing from directory: "+dirname);
 	}
 	else {
-		addRow(tlsn_files[i].name,tlsn_lmdates[i],false,'tlsnotarygroup',"<html:a href='stuff'>stuff</html:a>");
+		addNewRow(tlsn_files[i].name,tlsn_lmdates[i],false,'tlsnotarygroup',"none");
 	}
 	verifyEntry(tlsn_files[i].name);
       }
@@ -88,6 +88,7 @@ function loadManager() {
 }
 
 function updateRow(basename, col, newval){
+	//TODO update multiple columns
 	var table = document.getElementById("myTableData");
 	var index = -1;
 	for (i =0; i < tlsn_files.length; i++){

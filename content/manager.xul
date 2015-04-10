@@ -36,16 +36,19 @@
       In this document you can check the list of notarization files you have. 
       The validation status and the identity of the notary server are shown, as well
       as links to view the html which has been notarized.
+      
     </row>
     
     <row>
+    
        <html:head>
     <html:title>Manage your TLSNotary notarization files.</html:title>
 </html:head>
 <html:body onload="loadManager()">
 
 <html:div id="mydata">
-<html:b>Existing notarization (.tlsn) files ...</html:b>
+<html:b>Existing notarization (.tlsn) files ...</html:b> 
+<button style="list-style-image: url('chrome://tlsnotary/content/refresh.png')" oncommand="loadManager()" tooltiptext="refresh table"/>
 <html:table id="myTableData"  border="1" cellpadding="2">
     <html:tr>
         <html:td>Filename</html:td>
