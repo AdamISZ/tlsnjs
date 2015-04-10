@@ -12,7 +12,7 @@ function addRow(filename,lm_date,verified,verifier){
     row.insertCell(0).innerHTML = filename;
     row.insertCell(1).innerHTML = lm_date;
     if (verified){
-	tbi = 'YES';
+	tbi = 'UNINITIALISED';
     }
     else {
         tbi = 'NO';
@@ -174,8 +174,8 @@ function verifyEntry(basename){
 	s.server_connection_state.seq_no += 1;
 	s.server_connection_state.IV = s.IV_after_finished;
 	x =  decrypt_html(s);
-	console.log("got x: "+x);
-	updateRow(basename,2,"YES IT WORKED");
+	//console.log("got x: "+x);
+	updateRow(basename,2,"<html:img src='chrome://tlsnotary/content/check.png' height='30' width='30' ></html:img> Valid");
 	}).catch(function(error){
 	console.log("Got this error: "+ error);
 	updateRow(basename,2,"NOT VERIFIED! : "+ error);
