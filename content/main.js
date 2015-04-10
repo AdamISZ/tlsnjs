@@ -11,6 +11,7 @@ var dict_of_httpchannels = {};
 var win = Cc['@mozilla.org/appshell/window-mediator;1']
 	.getService(Ci.nsIWindowMediator).getMostRecentWindow('navigator:browser');
 var gBrowser = win.gBrowser;
+var block_urls = []; //an array of urls (filesystem paths) for which all http requests must be blocked
 //navigator must be exposed for jsbn.js
 var navigator = win.navigator;
 var setTimeout = win.setTimeout;
@@ -87,6 +88,7 @@ function startListening(){
 //from now on, we will check the security status of all loaded tabs
 //and store the security status in a lookup table indexed by the url.
     gBrowser.addProgressListener(myListener);
+	Services.obs.addObserver(httpRequestBlocker, "http-on-modify-request", false);
 }
 
 //callback is used in testing to signal when this page's n10n finished
@@ -218,8 +220,8 @@ function create_final_html(html_with_headers, server_name, is_imported){
 	localDir.append(time+'-'+server_name+imported_str); 
 	localDir.create(Ci.nsIFile.DIRECTORY_TYPE, 0774);
 
-	var final_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
 	var path_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+	var raw_response = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
 	path_html.initWithPath(localDir.path);
 	path_html.append('html.html');
 	 //see "Byte order mark"
@@ -228,34 +230,12 @@ function create_final_html(html_with_headers, server_name, is_imported){
 		return OS.File.writeAtomic(path_html.path, ba2ua(str2ba(html)));
 	})
 	.then(function(){
-		final_html.initWithPath(localDir.path);
-		final_html.append('final.html');
-		return OS.File.writeAtomic(final_html.path, ba2ua([0xef, 0xbb, 0xbf]));
+		raw_response.initWithPath(localDir.path);
+		raw_response.append('raw.txt');
+		return OS.File.writeAtomic(raw_response.path, ba2ua([0xef, 0xbb, 0xbf]));
 	})
 	.then(function(){
-	//TODO: split into 3 sections. Header showing n10n succss + domain name
-	//Option to show http headers and raw html
-	//the rendered html
-		var finalhtml = ' \
-		<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" \
-			"http://www.w3.org/TR/html4/strict.dtd"> \
-		<html lang="en"> \
-		  <head> \
-			<meta http-equiv="content-type" content="text/html; charset=utf-8"> \
-			<title>title</title> \
-			<link rel="stylesheet" type="text/css" href="style.css"> \
-			<script type="text/javascript" src="script.js"></script> \
-		  </head> \
-		  <body> \
-				<h1>TLSNotary successfully verified that the webpage below was received from '
-				+server_name+
-				'</h1> \
-				<iframe src="'
-				+path_html.path+
-				'" height="500" width="100%"></iframe> \
-		  </body> \
-		</html>';
-		return OS.File.writeAtomic(final_html.path, ba2ua(str2ba(finalhtml)));
+		return OS.File.writeAtomic(raw_response.path, ba2ua(str2ba(html_with_headers)));
 	})
 	.then(function(){
 		return localDir;
@@ -317,17 +297,30 @@ function save_session_and_open_html(args, server){
 	.then(function(){
 		var final_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
 		final_html.initWithPath(localDir.path);
-		final_html.append('final.html');
-		if (testing){
-			gBrowser.addTab(final_html.path);
-			return;
-		}
-		//else not testing
-		toggle_offline();
+		final_html.append('html.html');
+		var raw = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+		raw.initWithPath(localDir.path);
+		raw.append('raw.txt');
 		var t = gBrowser.addTab(final_html.path);
-		t.addEventListener("load", function load(){
-			toggle_offline();
-			t.removeEventListener("load", load, false)});
+		block_urls.push(final_html.path);
+		gBrowser.selectedTab = t;
+		t.addEventListener("load", function(){
+			var box = gBrowser.getNotificationBox();
+			var priority = box.PRIORITY_INFO_HIGH;
+			var message = 'TLSNotary successfully verified that the webpage below was received from '+commonName;
+			var icon = 'chrome://tlsnotary/content/icon.png';
+			var buttons = [{
+				label: 'View raw HTML with HTTP headers',
+				accessKey: '',
+				callback: function(){
+					gBrowser.addTab(raw.path);
+					//throwing an error prevents notification from closing acc.to 
+					//https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XUL/Method/appendNotification
+					throw new Error('prevent notification close');
+				}
+			}];
+			box.appendNotification(message, null, icon, priority, buttons);
+		}, true);
 	});
 }
 	
@@ -417,6 +410,7 @@ function verify_tlsn_and_show_html(path){
 		t.addEventListener("load", function load(){
 			toggle_offline();
 			t.removeEventListener("load", load, false)});
+		gBrowser.selectedTab = t;
 	});		
 	});
 }
@@ -506,6 +500,30 @@ function dumpSecurityInfo(channel,urldata) {
         console.log("\tNo security info available for this channel\n");
     }
 }
+
+//blocks http request coming from block_tab
+var httpRequestBlocker = {
+	observe: function (httpChannel, aTopic, aData) {
+		if (aTopic !== "http-on-modify-request") return;
+		if (!(httpChannel instanceof Ci.nsIHttpChannel)) return;    
+		var notificationCallbacks;
+		if (httpChannel.notificationCallbacks) {
+			notificationCallbacks = httpChannel.notificationCallbacks;
+		}
+		else if (httpChannel.loadGroup && httpChannel.loadGroup.notificationCallbacks) {
+			notificationCallbacks = httpChannel.loadGroup.notificationCallbacks;        
+		}
+		else return;
+		var path = notificationCallbacks.getInterface(Components.interfaces.nsIDOMWindow).top.location.pathname;
+		console.log('got path', path);
+		for(var i=0; i < block_urls.length; i++){
+			if (block_urls[i] === path){
+				console.log('found matching tab, ignoring request');
+				httpChannel.cancel(Components.results.NS_BINDING_ABORTED);
+			}
+		}
+	}
+};
 
 
 var	myListener =
