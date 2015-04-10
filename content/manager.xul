@@ -22,6 +22,7 @@
   <script src="pako.js"></script>
   <script src="tlsn.js"></script>
   <script src="tlsn_utils.js"></script> 
+  <script src="button.js"></script> 
   <script src="manager.js"></script>
   
 <grid flex="1">
@@ -49,6 +50,8 @@
 <html:div id="mydata">
 <html:b>Existing notarization (.tlsn) files ...</html:b> 
 <button style="list-style-image: url('chrome://tlsnotary/content/refresh.png')" oncommand="loadManager()" tooltiptext="refresh table"/>
+<button label="Import" oncommand="importTLSNFiles()"/>
+
 <html:table id="myTableData"  border="1" cellpadding="2">
     <html:tr>
         <html:td>Filename</html:td>

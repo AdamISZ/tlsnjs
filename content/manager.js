@@ -5,6 +5,10 @@ var tlsn_files = [];
 var tlsn_lmdates = [];
 
 
+function importTLSNFiles(){
+	main.verify();
+	loadManager();
+}
 function addNewRow(filename,lm_date,verified,verifier,html_link){
     var table = document.getElementById("myTableData");
     var rowCount = table.rows.length;
