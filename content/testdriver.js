@@ -54,7 +54,7 @@ var tlsnLoadListener = {
         {
 			gBrowser.removeProgressListener(this);
 			//begin recording as soon as the page turns into https
-			startRecording(openNextLink);
+			startNotarizing(openNextLink);
         }    
     }
 }

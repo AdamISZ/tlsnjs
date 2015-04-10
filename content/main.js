@@ -32,44 +32,6 @@ function init(){
 }
 
 
-/*Show the notification with default buttons (usebutton undefined), 'AUDIT' and 'FINISH'
-or with just the AUDIT button (usebutton true or truthy) or no buttons (usebutton false) */
-function notBarShow(text,usebutton){
-    var _gNB = win.document.getElementById("global-notificationbox"); //global notification box area
-    _gNB.removeAllNotifications();
-    var buttons;
-    if (typeof(usebutton)==='undefined'){
-    //Default: show both buttons
-	buttons = [{
-	    label: 'AUDIT THIS PAGE',
-	    popup: null,
-	    callback: startRecording
-	},
-	{
-	    label: 'FINISH',
-	    accessKey: null,
-	    popup: null,
-	    callback: stopRecording
-	    }];
-    }
-    else if (usebutton===false){
-	buttons = null;
-    }
-    else{
-	buttons = [{
-	    label: 'AUDIT THIS PAGE',
-	    accessKey: "U",
-	    popup: null,
-	    callback: startRecording
-	}];
-    }
-	const priority = _gNB.PRIORITY_INFO_MEDIUM;
-	_gNB.appendNotification(text, 'tlsnotary-box',
-			     'chrome://tlsnotary/content/icon.png',
-			      priority, buttons);
-}
-
-
 function startListening(){
 //from now on, we will check the security status of all loaded tabs
 //and store the security status in a lookup table indexed by the url.
@@ -77,8 +39,9 @@ function startListening(){
 	Services.obs.addObserver(httpRequestBlocker, "http-on-modify-request", false);
 }
 
+
 //callback is used in testing to signal when this page's n10n finished
-function startRecording(callback){	
+function startNotarizing(callback){	
     var audited_browser = gBrowser.selectedBrowser;
     var tab_url_full = audited_browser.contentWindow.location.href;
     
@@ -86,20 +49,12 @@ function startRecording(callback){
     sanitized_url = tab_url_full.split("#")[0];
     
     if (!sanitized_url.startsWith("https://")){
-	var btn = win.document.getElementsByAttribute("label","FINISH")[0]; //global notification box area
-	errmsg="ERROR You can only audit pages which start with https://";
-	if (typeof(btn)==='undefined'){
-	    notBarShow(errmsg,true);
-	}
-	else{
-	    notBarShow(errmsg);
-	}
-	return;
+		alert('"ERROR You can only audit pages which start with https://');
+		return;
     }
     //XXX this check is not needed anymore
     if (dict_of_status[sanitized_url] != "secure"){
-	alert("The page does not have a valid SSL certificate. Try to refresh the page and then press AUDIT THIS PAGE.");
-	notBarShow("Go to a page and press AUDIT THIS PAGE. Then wait for the page to reload automatically.");
+	alert("The page does not have a valid SSL certificate. Refresh the page and then try to notarize it again");
 	return;
     }
     
@@ -495,7 +450,6 @@ var httpRequestBlocker = {
 		}
 		else return;
 		var path = notificationCallbacks.getInterface(Components.interfaces.nsIDOMWindow).top.location.pathname;
-		console.log('got path', path);
 		for(var i=0; i < block_urls.length; i++){
 			if (block_urls[i] === path){
 				console.log('found matching tab, ignoring request');
