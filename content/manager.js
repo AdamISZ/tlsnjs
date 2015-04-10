@@ -5,7 +5,7 @@ var tlsn_files = [];
 var tlsn_lmdates = [];
 
 
-function addRow(filename,lm_date,verified,verifier){
+function addRow(filename,lm_date,verified,verifier,html_link){
     var table = document.getElementById("myTableData");
     var rowCount = table.rows.length;
     var row = table.insertRow(rowCount);
@@ -19,10 +19,22 @@ function addRow(filename,lm_date,verified,verifier){
     }
     row.insertCell(2).innerHTML = tbi;
     row.insertCell(3).innerHTML = verifier;
+    row.insertCell(4).innerHTML = html_link;
+}
+
+function clearTable(){
+   var table = document.getElementById("myTableData");
+   table.innerHTML = "<html:tr> \
+<html:td>Filename</html:td> \
+        <html:td><html:b>Last modified</html:b></html:td> \
+        <html:td><html:b>Verified</html:b></html:td> \
+	<html:td><html:b>Verifier identity</html:b></html:td> \
+	<html:td><html:b> html </html:b></html:td> </html:tr>";
 }
 
 //reloads whole file table, refreshing contents
 function loadManager() {
+	clearTable();
    tlsn_files = [];
    tlsn_lmdates = [];	
   let iterator = new OS.File.DirectoryIterator(tlsn_dir);
@@ -60,7 +72,7 @@ function loadManager() {
 		console.log("tlsn file was missing from directory: "+dirname);
 	}
 	else {
-		addRow(tlsn_files[i].name,tlsn_lmdates[i],false,'tlsnotarygroup');
+		addRow(tlsn_files[i].name,tlsn_lmdates[i],false,'tlsnotarygroup',"<html:a href='stuff'>stuff</html:a>");
 	}
 	verifyEntry(tlsn_files[i].name);
       }
@@ -176,9 +188,14 @@ function verifyEntry(basename){
 	x =  decrypt_html(s);
 	//console.log("got x: "+x);
 	updateRow(basename,2,"<html:img src='chrome://tlsnotary/content/check.png' height='30' width='30' ></html:img> Valid");
+	console.log("Pubkey: "+ba2hex(notary_pubkey));
+	updateRow(basename,3,"tlsnotarygroup"); //TODO: pretty print pubkey?
+	updateRow(basename,4,"<html:a href = 'file:///" + OS.Path.join(tlsn_dir,basename,"page.html") + "'> View  </html:a>");
 	}).catch(function(error){
 	console.log("Got this error: "+ error);
-	updateRow(basename,2,"NOT VERIFIED! : "+ error);
+	updateRow(basename,2,"<html:img src='chrome://tlsnotary/content/cross.png' height='30' width='30' ></html:img> Not verified: "+ error);
+	updateRow(basename,3,"none");
+	updateRow(basename,4,"none");
 	});
 	
 }

@@ -1,0 +1,19 @@
+@import url("chrome://global/skin/");
+@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
+
+.tbl_header {
+    -moz-appearance: none;
+   font-weight: bolder;
+   font-family: Arial, Verdana, Helvetica;
+   font-size: 8pt;
+   color: #fcfcfc;
+   background-color: #4F80AB;
+}
+
+tr {
+    vertical-align: top;
+}
+
+td {
+    vertical-align: top;
+}

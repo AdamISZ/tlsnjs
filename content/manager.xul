@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 
-<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+<?xml-stylesheet href="chrome://tlsnotary/content/manager.css" type="text/css"?>
 
 <window id="tlsn-file-window" title="TLSNotary File Manager"
         xmlns:html="http://www.w3.org/1999/xhtml"
@@ -23,30 +23,27 @@
   <script src="tlsn.js"></script>
   <script src="tlsn_utils.js"></script> 
   <script src="manager.js"></script>
-<html:p>
- <html:head>
+  
+<grid flex="1">
+  
+  <columns>
+    <column flex="2"/>
+    <column flex="1"/>
+  </columns>
+
+  <rows>
+  <row>
+      In this document you can check the list of notarization files you have. 
+      The validation status and the identity of the notary server are shown, as well
+      as links to view the html which has been notarized.
+    </row>
+    
+    <row>
+       <html:head>
     <html:title>Manage your TLSNotary notarization files.</html:title>
 </html:head>
 <html:body onload="loadManager()">
-<html:div id="myform">
-<html:input type="button" id="create" value="Refresh" onclick="loadManager()"></html:input>
-<html:b>Simple form with name and age ...</html:b>
-<html:table>
-    <html:tr>
-        <html:td>Name:</html:td>
-        <html:td><html:input type="text" id="name"></html:input></html:td>
-    </html:tr>
-    <html:tr>
-        <html:td>Age:</html:td>
-        <html:td><html:input type="text" id="age">
-        </html:input></html:td>
-    </html:tr>
-    <html:tr>
-        <html:td>&#160;</html:td>
-        <html:td>&#160;</html:td>
-    </html:tr>
-</html:table>
-</html:div>
+
 <html:div id="mydata">
 <html:b>Existing notarization (.tlsn) files ...</html:b>
 <html:table id="myTableData"  border="1" cellpadding="2">
@@ -55,11 +52,16 @@
         <html:td><html:b>Last modified</html:b></html:td>
         <html:td><html:b>Verified</html:b></html:td>
 	<html:td><html:b>Verifier identity</html:b></html:td>
+	<html:td><html:b> html </html:b></html:td>
 	
     </html:tr>
 </html:table>
 </html:div>
 </html:body>
-</html:p>
+
+    </row>
+  </rows>
+
+</grid>
 
 </window>

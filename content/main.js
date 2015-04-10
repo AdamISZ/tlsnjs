@@ -19,8 +19,9 @@ var btoa = win.btoa;
 var atob = win.atob;
 
 function openManager(){
-	window.open("chrome://tlsnotary/content/manager.xul","Manage TLSN files",
-	"chrome,centerscreen");
+	//window.open("chrome://tlsnotary/content/manager.xul","Manage TLSN files",
+	//"chrome,centerscreen");
+	gBrowser.addTab("chrome://tlsnotary/content/manager.xul");
 }
 
 function init(){
