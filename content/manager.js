@@ -10,9 +10,10 @@ function importTLSNFiles(){
 	loadManager();
 }
 function addNewRow(filename,lm_date,verified,verifier,html_link){
-    var table = document.getElementById("myTableData");
-    var rowCount = table.rows.length;
-    var row = table.insertRow(rowCount);
+    var tbody = document.getElementById("myTableData").getElementsByTagName('tbody')[0];
+    var rowCount = tbody.rows.length;
+    console.log("tbody length is : "+rowCount);
+    var row = tbody.insertRow(rowCount);
     row.insertCell(0).innerHTML = filename;
     row.insertCell(1).innerHTML = lm_date;
     if (verified){
@@ -28,12 +29,17 @@ function addNewRow(filename,lm_date,verified,verifier,html_link){
 
 function clearTable(){
    var table = document.getElementById("myTableData");
-   table.innerHTML = "<html:tr> \
-<html:td>Filename</html:td> \
-        <html:td><html:b>Last modified</html:b></html:td> \
-        <html:td><html:b>Verified</html:b></html:td> \
-	<html:td><html:b>Verifier identity</html:b></html:td> \
-	<html:td><html:b> html </html:b></html:td> </html:tr>";
+   table.innerHTML = "<thead> \
+    <tr> \
+        <th scope='col' abbr='Filename'>Filename</th> \
+        <th scope='col' abbr='Date'>Last Modified Date</th> \
+        <th scope='col' abbr='Verified'>Verified</th> \
+	<th scope='col' abbr='Verifier'>Verifier</th> \
+	<th scope='col' abbr='Html'>View Html</th> \
+    </tr>	\
+    </thead> \
+    <tbody> \
+	</tbody>";
 }
 
 //reloads whole file table, refreshing contents
@@ -93,7 +99,7 @@ function loadManager() {
 
 function updateRow(basename, col, newval){
 	//TODO update multiple columns
-	var table = document.getElementById("myTableData");
+	var tbody = document.getElementById("myTableData").getElementsByTagName('tbody')[0];
 	var index = -1;
 	for (i =0; i < tlsn_files.length; i++){
 		if (tlsn_files[i].name == basename){
@@ -104,7 +110,7 @@ function updateRow(basename, col, newval){
 		console.log("No such row: "+basename);
 		return;
 	}
-	row = table.rows[index+1];
+	row = tbody.rows[index];
 	cell = row.cells[col];
 	cell.innerHTML = newval;
 }
@@ -192,13 +198,13 @@ function verifyEntry(basename){
 	s.server_connection_state.IV = s.IV_after_finished;
 	x =  decrypt_html(s);
 	//console.log("got x: "+x);
-	updateRow(basename,2,"<html:img src='chrome://tlsnotary/content/check.png' height='30' width='30' ></html:img> Valid");
+	updateRow(basename,2,"<img src='chrome://tlsnotary/content/check.png' height='30' width='30' ></img> Valid");
 	console.log("Pubkey: "+ba2hex(notary_pubkey));
 	updateRow(basename,3,"tlsnotarygroup"); //TODO: pretty print pubkey?
-	updateRow(basename,4,"<html:a href = 'file:///" + OS.Path.join(tlsn_dir,basename,"page.html") + "'> View  </html:a>");
+	updateRow(basename,4,"<a href = 'file:///" + OS.Path.join(tlsn_dir,basename,"page.html") + "'> View  </a>");
 	}).catch(function(error){
 	console.log("Got this error: "+ error);
-	updateRow(basename,2,"<html:img src='chrome://tlsnotary/content/cross.png' height='30' width='30' ></html:img> Not verified: "+ error);
+	updateRow(basename,2,"<img src='chrome://tlsnotary/content/cross.png' height='30' width='30' ></img> Not verified: "+ error);
 	updateRow(basename,3,"none");
 	updateRow(basename,4,"none");
 	});

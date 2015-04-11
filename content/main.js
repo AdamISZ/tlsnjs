@@ -21,7 +21,7 @@ var atob = win.atob;
 function openManager(){
 	//window.open("chrome://tlsnotary/content/manager.xul","Manage TLSN files",
 	//"chrome,centerscreen");
-	gBrowser.addTab("chrome://tlsnotary/content/manager.xul");
+	gBrowser.addTab("chrome://tlsnotary/content/manager.xhtml");
 }
 
 function init(){
