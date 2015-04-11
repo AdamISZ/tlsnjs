@@ -1,6 +1,5 @@
 var script_exception;
 try {	
-
 const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 Cu.import("resource://gre/modules/PopupNotifications.jsm");
 Cu.import('resource://gre/modules/Services.jsm');
@@ -22,7 +21,9 @@ var atob = win.atob;
 function openManager(){
 	//window.open("chrome://tlsnotary/content/manager.xul","Manage TLSN files",
 	//"chrome,centerscreen");
-	gBrowser.addTab("chrome://tlsnotary/content/manager.xhtml");
+	var t = gBrowser.addTab("chrome://tlsnotary/content/manager.xhtml");
+	gBrowser.selectedTab = t;
+	
 }
 
 function init(){
@@ -263,9 +264,8 @@ function save_session_and_open_html(args, server){
 }
 	
 
-function verify_tlsn_and_show_html(path){
-	OS.File.read(path).then(function(imported_data){
-	var data = ua2ba(imported_data);
+function verify_tlsn(imported_data){
+var data = ua2ba(imported_data);
 	var offset = 0;
 	if (ba2str(data.slice(offset, offset+=29)) !== "tlsnotary notarization file\n\n"){
 		throw('wrong header');
@@ -328,29 +328,43 @@ function verify_tlsn_and_show_html(path){
 	s.IV_after_finished = IV;
 	s.server_connection_state.seq_no += 1;
 	s.server_connection_state.IV = s.IV_after_finished;
-	
-	var html_with_headers = decrypt_html(s);
-	var localDir;
-	create_final_html(html_with_headers, commonName, true)
-	.then(function(dir){
-		localDir = dir;
-		var path_tlsn = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
-		path_tlsn.initWithPath(localDir.path);
-		path_tlsn.append(commonName+'.tlsn');
-		return OS.File.writeAtomic(path_tlsn.path, imported_data);
-	})
-	.then(function(){
-		var final_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
-		final_html.initWithPath(localDir.path);
-		final_html.append('html.html');
-		var raw = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
-		raw.initWithPath(localDir.path);
-		raw.append('raw.txt');
-		block_urls.push(final_html.path);
-		var t = gBrowser.addTab(final_html.path);
-		gBrowser.selectedTab = t;
-		install_notification(t, commonName, raw.path);
-	});		
+	html_with_headers = decrypt_html(s);
+	return [html_with_headers,commonName,imported_data];;
+}
+
+function verify_tlsn_and_show_html(path, create){
+	OS.File.read(path).then( function(imported_data){
+		return verify_tlsn(imported_data);
+	}).then(function (a){
+	if (create){
+		var localDir;
+		var html_with_headers = a[0];
+		var commonName = a[1];
+		var imported_data = a[2];
+		create_final_html(html_with_headers, commonName, true)
+		.then(function(dir){
+			localDir = dir;
+			var path_tlsn = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+			path_tlsn.initWithPath(localDir.path);
+			path_tlsn.append(commonName+'.tlsn');
+			return OS.File.writeAtomic(path_tlsn.path, imported_data);
+		})
+		.then(function(){
+			var final_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+			final_html.initWithPath(localDir.path);
+			final_html.append('html.html');
+			var raw = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+			raw.initWithPath(localDir.path);
+			raw.append('raw.txt');
+			block_urls.push(final_html.path);
+			var t = gBrowser.addTab(final_html.path);
+			gBrowser.selectedTab = t;
+			install_notification(t, commonName, raw.path);
+		});
+	}
+	}).catch( function(error){
+	//TODO handle errors
+	console.log("got error in vtsh: "+error);
 	});
 }
 

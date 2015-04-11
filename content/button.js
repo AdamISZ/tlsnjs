@@ -33,7 +33,7 @@ let main = {
 	var rv = fp.show();
 	if (rv == nsIFilePicker.returnOK || rv == nsIFilePicker.returnReplace) {
 	  var path = fp.file.path;
-	  verify_tlsn_and_show_html(path);
+	  verify_tlsn_and_show_html(path, true);
 	}
   },
   manage: function() {

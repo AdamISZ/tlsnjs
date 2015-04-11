@@ -29,8 +29,8 @@
   
 <div id="mydata">
 <b>Existing notarization (.tlsn) files ...</b> 
-<button  tooltiptext="refresh table"><em class="leftImage"></em>Refresh</button>
-<button>Import</button>
+<button  id="refresher" onclick="loadManager()" title="refresh table"><em class="leftImage"></em>Refresh</button>
+<button id="import" onclick="importTLSNFiles()" title="import a .tlsn file from disk">Import</button>
 
 <table class="table1" id="myTableData">
     <thead>
@@ -42,58 +42,8 @@
 	<th scope="col" abbr="Html">View Html</th>
     </tr>	
     </thead>
-    <tfoot>
-		<tr>
-			<th scope="row">Price per month</th>
-			<td>$ 2.90</td>
-			<td>$ 5.90</td>
-			<td>$ 9.90</td>
-			<td>$ 14.90</td>
-		</tr>
-	</tfoot>
+    
     <tbody>
-		<tr>
-			<th scope="row">Storage Space</th>
-			<td>512 MB</td>
-			<td>1 GB</td>
-			<td>2 GB</td>
-			<td>4 GB</td>
-		</tr>
-		<tr>
-			<th scope="row">Bandwidth</th>
-			<td>50 GB</td>
-			<td>100 GB</td>
-			<td>150 GB</td>
-			<td>Unlimited</td>
-		</tr>
-		<tr>
-			<th scope="row">MySQL Databases</th>
-			<td>Unlimited</td>
-			<td>Unlimited</td>
-			<td>Unlimited</td>
-			<td>Unlimited</td>
-		</tr>
-		<tr>
-			<th scope="row">Setup</th>
-			<td>19.90 $</td>
-			<td>12.90 $</td>
-			<td>free</td>
-			<td>free</td>
-		</tr>
-		<tr>
-			<th scope="row">PHP 5</th>
-			<td><span class="check"></span></td>
-			<td><span class="check"></span></td>
-			<td><span class="check"></span></td>
-			<td><span class="check"></span></td>
-		</tr>
-		<tr>
-			<th scope="row">Ruby on Rails</th>
-			<td><span class="check"></span></td>
-			<td><span class="check"></span></td>
-			<td><span class="check"></span></td>
-			<td><span class="check"></span></td>
-		</tr>
 	</tbody>
 </table>
 </div>
