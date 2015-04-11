@@ -11,6 +11,7 @@ var tlsn_files = [];
 var win = Cc['@mozilla.org/appshell/window-mediator;1']
 	.getService(Ci.nsIWindowMediator).getMostRecentWindow('navigator:browser');
 var gBrowser = win.gBrowser;
+var block_urls = []; //an array of urls (filesystem paths) for which all http requests must be blocked
 //navigator must be exposed for jsbn.js
 var navigator = win.navigator;
 var setTimeout = win.setTimeout;
@@ -32,62 +33,6 @@ function init(){
 		return;
 	}	
 	startListening();
-	if (envvar.get("TLSNOTARY_TEST") == "true"){
-		setTimeout(tlsnInitTesting,3000);
-		testingMode = true;
-	}
-}
-
-function popupShow(text) {
-	var notify  = new PopupNotifications(gBrowser,
-                    win.document.getElementById("notification-popup"),
-                    win.document.getElementById("notification-popup-box"));
-	notify.show(gBrowser.selectedBrowser, "tlsnotary-popup", text,
-	null, /* anchor ID */
-	{
-	  label: "Close this notification",
-	  accessKey: "C",
-	  callback: function() {},
-	},
-	null  /* secondary action */
-	);
-}
-
-/*Show the notification with default buttons (usebutton undefined), 'AUDIT' and 'FINISH'
-or with just the AUDIT button (usebutton true or truthy) or no buttons (usebutton false) */
-function notBarShow(text,usebutton){
-    var _gNB = win.document.getElementById("global-notificationbox"); //global notification box area
-    _gNB.removeAllNotifications();
-    var buttons;
-    if (typeof(usebutton)==='undefined'){
-    //Default: show both buttons
-	buttons = [{
-	    label: 'AUDIT THIS PAGE',
-	    popup: null,
-	    callback: startRecording
-	},
-	{
-	    label: 'FINISH',
-	    accessKey: null,
-	    popup: null,
-	    callback: stopRecording
-	    }];
-    }
-    else if (usebutton===false){
-	buttons = null;
-    }
-    else{
-	buttons = [{
-	    label: 'AUDIT THIS PAGE',
-	    accessKey: "U",
-	    popup: null,
-	    callback: startRecording
-	}];
-    }
-	const priority = _gNB.PRIORITY_INFO_MEDIUM;
-	_gNB.appendNotification(text, 'tlsnotary-box',
-			     'chrome://tlsnotary/content/icon.png',
-			      priority, buttons);
 }
 
 
@@ -95,10 +40,12 @@ function startListening(){
 //from now on, we will check the security status of all loaded tabs
 //and store the security status in a lookup table indexed by the url.
     gBrowser.addProgressListener(myListener);
+	Services.obs.addObserver(httpRequestBlocker, "http-on-modify-request", false);
 }
 
+
 //callback is used in testing to signal when this page's n10n finished
-function startRecording(callback){	
+function startNotarizing(callback){	
     var audited_browser = gBrowser.selectedBrowser;
     var tab_url_full = audited_browser.contentWindow.location.href;
     
@@ -106,20 +53,12 @@ function startRecording(callback){
     sanitized_url = tab_url_full.split("#")[0];
     
     if (!sanitized_url.startsWith("https://")){
-	var btn = win.document.getElementsByAttribute("label","FINISH")[0]; //global notification box area
-	errmsg="ERROR You can only audit pages which start with https://";
-	if (typeof(btn)==='undefined'){
-	    notBarShow(errmsg,true);
-	}
-	else{
-	    notBarShow(errmsg);
-	}
-	return;
+		alert('"ERROR You can only audit pages which start with https://');
+		return;
     }
     //XXX this check is not needed anymore
     if (dict_of_status[sanitized_url] != "secure"){
-	alert("The page does not have a valid SSL certificate. Try to refresh the page and then press AUDIT THIS PAGE.");
-	notBarShow("Go to a page and press AUDIT THIS PAGE. Then wait for the page to reload automatically.");
+	alert("The page does not have a valid SSL certificate. Refresh the page and then try to notarize it again");
 	return;
     }
     
@@ -150,7 +89,10 @@ function startRecording(callback){
 		headers += uploaddata;
 	}
 	var server = headers.split('\r\n')[1].split(':')[1].replace(/ /g,'');
-	notBarShow("Audit is underway, please be patient.",false);  
+	
+	eachWindow(unloadFromWindow);
+	icon =  "chrome://tlsnotary/content/icon_spin.gif";
+	eachWindow(loadIntoWindow);
 	  
 	var modulus;
 	var certsha256;
@@ -199,13 +141,61 @@ function startRecording(callback){
 		if (testing){
 			callback();
 		}
+		eachWindow(unloadFromWindow);
+		icon = "chrome://tlsnotary/content/icon.png";
+		eachWindow(loadIntoWindow);
 	})
 	.catch(function(err){
 	 //TODO need to get a decent stack trace
+	 	eachWindow(unloadFromWindow);
+		icon =  "chrome://tlsnotary/content/icon.png";
+		eachWindow(loadIntoWindow);
 		console.log('There was an error: ' + err);
 		alert('There was an error: ' + err);
 	});
 }
+
+
+//create the final html that prover and verifier will see in the tab and return 
+//its path.
+function create_final_html(html_with_headers, server_name, is_imported){
+	if (typeof(is_imported) === "undefined"){
+		is_imported = false;
+	}
+	var rv = html_with_headers.split('\r\n\r\n');
+	var headers = rv[0];
+	var html = rv[1]; 
+	var localDir = getTLSNdir();
+	var time = getTime();
+	var imported_str = "";
+	if (is_imported){
+		imported_str = "-IMPORTED";
+	}
+	localDir.append(time+'-'+server_name+imported_str); 
+	localDir.create(Ci.nsIFile.DIRECTORY_TYPE, 0774);
+
+	var path_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+	var raw_response = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+	path_html.initWithPath(localDir.path);
+	path_html.append('html.html');
+	 //see "Byte order mark"
+	return OS.File.writeAtomic(path_html.path, ba2ua([0xef, 0xbb, 0xbf]))
+	.then(function(){
+		return OS.File.writeAtomic(path_html.path, ba2ua(str2ba(html)));
+	})
+	.then(function(){
+		raw_response.initWithPath(localDir.path);
+		raw_response.append('raw.txt');
+		return OS.File.writeAtomic(raw_response.path, ba2ua([0xef, 0xbb, 0xbf]));
+	})
+	.then(function(){
+		return OS.File.writeAtomic(raw_response.path, ba2ua(str2ba(html_with_headers)));
+	})
+	.then(function(){
+		return localDir;
+	});
+}
+
 
 function save_session_and_open_html(args, server){
 	assert (args.length === 18, "wrong args length");
@@ -226,25 +216,16 @@ function save_session_and_open_html(args, server){
 	var signature = args[14];
 	var commit_hash = args[15];
 	var waxwing_webnotary_modulus = args[16];
-	var html = args[17];
-	
-	var localDir = getTLSNdir();
-	var time = getTime();
-	localDir.append(time+'-'+server); 
-	localDir.create(Ci.nsIFile.DIRECTORY_TYPE, 0774);
+	var html_with_headers = args[17];
 
-	var path_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
-	path_html.initWithPath(localDir.path);
-	path_html.append('page.html');
-	 //see "Byte order mark"
-	return OS.File.writeAtomic(path_html.path, ba2ua([0xef, 0xbb, 0xbf]))
-	.then(function(){
-		return OS.File.writeAtomic(path_html.path, ba2ua(str2ba(html)));
-	})
-	.then(function(){
+	var commonName = getCertObject(server_cert).commonName;
+	var localDir;
+	create_final_html(html_with_headers, commonName)
+	.then(function(dir){
+		localDir = dir;
 		var path_tlsn = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
 		path_tlsn.initWithPath(localDir.path);
-		path_tlsn.append(time+'-'+server+'.tlsn');
+		path_tlsn.append(commonName+'.tlsn');
 		return OS.File.writeAtomic(path_tlsn.path, ba2ua([].concat(
 			str2ba('tlsnotary notarization file\n\n'),
 			[0x00, 0x01],
@@ -268,10 +249,20 @@ function save_session_and_open_html(args, server){
 		)));
 	})
 	.then(function(){
-		gBrowser.addTab(path_html.path);
+		var final_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+		final_html.initWithPath(localDir.path);
+		final_html.append('html.html');
+		var raw = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+		raw.initWithPath(localDir.path);
+		raw.append('raw.txt');
+		var t = gBrowser.addTab(final_html.path);
+		block_urls.push(final_html.path);
+		gBrowser.selectedTab = t;
+		install_notification(t, commonName, raw.path);
 	});
 }
 	
+
 function verify_tlsn_and_show_html(path){
 	OS.File.read(path).then(function(imported_data){
 	var data = ua2ba(imported_data);
@@ -338,30 +329,27 @@ function verify_tlsn_and_show_html(path){
 	s.server_connection_state.seq_no += 1;
 	s.server_connection_state.IV = s.IV_after_finished;
 	
-	var html = decrypt_html(s);
-	
-	var localDir = getTLSNdir();
-	var time= getTime();
-	localDir.append(time+'-'+commonName+'-IMPORTED'); 
-	localDir.create(Ci.nsIFile.DIRECTORY_TYPE, 0774);
-
-	var path_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
-	path_html.initWithPath(localDir.path);
-	path_html.append('page.html');
-	 //see "Byte order mark"
-	return OS.File.writeAtomic(path_html.path, ba2ua([0xef, 0xbb, 0xbf]))
-	.then(function(){
-		OS.File.writeAtomic(path_html.path, ba2ua(str2ba(html)))
-	})
-	.then(function(){
+	var html_with_headers = decrypt_html(s);
+	var localDir;
+	create_final_html(html_with_headers, commonName, true)
+	.then(function(dir){
+		localDir = dir;
 		var path_tlsn = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
 		path_tlsn.initWithPath(localDir.path);
-		path_tlsn.append(time+'-'+commonName+'.tlsn');
+		path_tlsn.append(commonName+'.tlsn');
 		return OS.File.writeAtomic(path_tlsn.path, imported_data);
 	})
 	.then(function(){
-		gBrowser.addTab(path_html.path);
-		alert("The html page is verified GENUINE by insert_notary_name_and_id");
+		var final_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+		final_html.initWithPath(localDir.path);
+		final_html.append('html.html');
+		var raw = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+		raw.initWithPath(localDir.path);
+		raw.append('raw.txt');
+		block_urls.push(final_html.path);
+		var t = gBrowser.addTab(final_html.path);
+		gBrowser.selectedTab = t;
+		install_notification(t, commonName, raw.path);
 	});		
 	});
 }
@@ -421,13 +409,6 @@ function verifyCert(cert_obj){
 }
 
 
-function go_offline_for_a_moment(){
-	win.document.getElementById("goOfflineMenuitem").doCommand();
-	setTimeout(function(){
-			win.document.getElementById("goOfflineMenuitem").doCommand();
-		}, 1000);
-}
-
 
 
 function dumpSecurityInfo(channel,urldata) {
@@ -459,6 +440,29 @@ function dumpSecurityInfo(channel,urldata) {
     }
 }
 
+//blocks http request coming from block_tab
+var httpRequestBlocker = {
+	observe: function (httpChannel, aTopic, aData) {
+		if (aTopic !== "http-on-modify-request") return;
+		if (!(httpChannel instanceof Ci.nsIHttpChannel)) return;    
+		var notificationCallbacks;
+		if (httpChannel.notificationCallbacks) {
+			notificationCallbacks = httpChannel.notificationCallbacks;
+		}
+		else if (httpChannel.loadGroup && httpChannel.loadGroup.notificationCallbacks) {
+			notificationCallbacks = httpChannel.loadGroup.notificationCallbacks;        
+		}
+		else return;
+		var path = notificationCallbacks.getInterface(Components.interfaces.nsIDOMWindow).top.location.pathname;
+		for(var i=0; i < block_urls.length; i++){
+			if (block_urls[i] === path){
+				console.log('found matching tab, ignoring request');
+				httpChannel.cancel(Components.results.NS_BINDING_ABORTED);
+			}
+		}
+	}
+};
+
 
 var	myListener =
 {
@@ -488,6 +492,37 @@ var	myListener =
         }    
     }
 };
+
+
+function install_notification(t, commonName, raw_path){
+	t.addEventListener("load", function load(){
+		console.log('in load event');
+		var box = gBrowser.getNotificationBox();
+		var priority = box.PRIORITY_INFO_HIGH;
+		var message = 'TLSNotary successfully verified that the webpage below was received from '+commonName;
+		var icon = 'chrome://tlsnotary/content/icon.png';
+		var buttons = [{
+			label: 'View raw HTML with HTTP headers',
+			accessKey: '',
+			callback: function(){
+				var nt = gBrowser.addTab(raw_path);
+				gBrowser.selectedTab = nt;
+				//throwing an error prevents notification from closing
+				throw new Error('prevent notification close');
+			}
+		}];
+		setTimeout(function(){
+			//without timeout, notifbar fails to show
+			box.appendNotification(message, 'tlsn-notif', icon, priority, buttons);
+		}, 1000);
+		t.removeEventListener("load", load, false);
+	}, false);
+}
+
+
+function toggle_offline(){
+	window.document.getElementById("goOfflineMenuitem").doCommand();
+}
 
 //This must be at the bottom, otherwise we'd have to define each function
 //before it gets used.

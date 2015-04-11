@@ -17,7 +17,7 @@ let main = {
 		  startTesting();
 	  }
 	  else {
-		startRecording();
+		startNotarizing();
 	}
   },
   verify: function() {

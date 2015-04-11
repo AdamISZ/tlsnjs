@@ -43,6 +43,8 @@ function loadIntoWindow(window) {
     button.addEventListener("command", main.action, false);
     toolbox.palette.appendChild(button);
     
+    let sep1 = doc.createElement("menuseparator");
+    let sep2 = doc.createElement("menuseparator");
     let mpu = doc.createElement("menupopup");
     mpu.setAttribute("id","tlsnmpu");
      let mi1 = doc.createElement("menuitem");
@@ -50,11 +52,13 @@ function loadIntoWindow(window) {
 	mi1.setAttribute("value","blah");
 	mi1.addEventListener("command",main.notarize, false)
 	mpu.appendChild(mi1);
+	mpu.appendChild(sep1);
 	 let mi2 = doc.createElement("menuitem");
 	mi2.setAttribute("label", 'Verify tlsn file');
 	mi2.setAttribute("value","blah");
 	mi2.addEventListener("command",main.verify, false)
 	mpu.appendChild(mi2);
+	mpu.appendChild(sep2);
 	 let mi3 = doc.createElement("menuitem");
 	mi3.setAttribute("label", 'Manage files');
 	mi3.setAttribute("value","blah");
@@ -142,7 +146,8 @@ function windowWatcher (subject, topic) {
 
 function startup(data, reason) AddonManager.getAddonByID(data.id, function(addon) {
   thisaddon = addon;
-  icon = addon.getResourceURI("icon.png").spec;
+  //icon = addon.getResourceURI("icon.png").spec;
+  icon = "chrome://tlsnotary/content/icon.png";
   // existing windows
   eachWindow(loadIntoWindow);
   // new windows

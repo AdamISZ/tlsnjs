@@ -134,10 +134,15 @@ Socket.prototype.connect = function(){
 	
 	var sock = this;
 	return new Promise(function(resolve, reject) {
+		var total_waited = 0;
 		var timeout = function(resolve){
+			if ((total_waited / 1000) >= 20){
+				reject('socket timed out');
+			}
 			setTimeout(function(){
 				if (!sock.is_open){
 					console.log('Another timeout');
+					total_waited += 100;
 					timeout(resolve);
 					return;
 				}

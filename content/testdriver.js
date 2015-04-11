@@ -30,6 +30,11 @@ function openNextLink(){
     var auditeeBrowser = gBrowser.addTab(url);
     gBrowser.addProgressListener(tlsnLoadListener);
     gBrowser.removeAllTabsBut(auditeeBrowser);
+    return;
+    //remove tabs ~ every 5th run. We dont want tabs immediately closed so we could examine html while the test is running
+    if ((Math.random()*5 << 0) === 4){
+		gBrowser.removeAllTabsBut(auditeeBrowser);
+	}
 }
 
 
@@ -49,7 +54,7 @@ var tlsnLoadListener = {
         {
 			gBrowser.removeProgressListener(this);
 			//begin recording as soon as the page turns into https
-			startRecording(openNextLink);
+			startNotarizing(openNextLink);
         }    
     }
 }
