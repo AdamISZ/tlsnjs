@@ -35,21 +35,23 @@ function addNewRow(filename,imported,verified,verifier,html_link){
 
 function deleteFile(basename){
 	//TODO dialog
-	alert("This will remove the entire directory:"+basename.id+", including html.")
-	OS.File.removeDir(OS.Path.join(tlsn_dir,basename.id));
-	loadManager();
+	var r = confirm("This will remove the entire directory:"+basename.id+", including html. Are you sure?");
+	if (r){
+	    OS.File.removeDir(OS.Path.join(tlsn_dir,basename.id));
+	    loadManager();
+	}
 }
 
 function clearTable(){
    var table = document.getElementById("myTableData");
    table.innerHTML = "<thead> \
     <tr> \
-        <th scope='col' abbr='Filename'>File details</th> \
-        <th scope='col' abbr='Date'>Mine/imported</th> \
-        <th scope='col' abbr='Verified'>Verified</th> \
-	<th scope='col' abbr='Verifier'>Verifier</th> \
-	<th scope='col' abbr='Html'>View Html</th> \
-	<th scope='col' abbr='Delete'> </th> \
+        <th title='date file was created and site name of the page' scope='col' abbr='Filename'>File details</th> \
+        <th title='mine if the file was created by you, imported otherwise' scope='col' abbr='Date'>Mine/imported</th> \
+        <th title='whether the addon verifies that the contents are signed correctly' scope='col' abbr='Verified'>Verified</th> \
+	<th title='the identity of the verifying notary server' scope='col' abbr='Verifier'>Verifier</th> \
+	<th title='links to the html file on disk which is verified to come from the given site; raw shows the file in text' scope='col' abbr='Html'>View Html</th> \
+	<th title='permanently remove this notarized file from your system' scope='col' abbr='Delete'> </th> \
     </tr>	\
     </thead> \
     <tbody> \
@@ -150,7 +152,7 @@ function verifyEntry(basename){
 	updateRow(basename,2,"<img src='chrome://tlsnotary/content/check.png' height='30' width='30' ></img> Valid");
 	//console.log("Pubkey: "+ba2hex(notary_pubkey));
 	updateRow(basename,3,"tlsnotarygroup"); //TODO: pretty print pubkey?
-	updateRow(basename,4,"<a href = 'file:///" + OS.Path.join(tlsn_dir,basename,"html.html") + "'> view  </a> \
+	updateRow(basename,4,"<a href = 'file:///" + OS.Path.join(tlsn_dir,basename,"html.html") + "'> view  </a> ,\
 	<a href = 'file:///" + OS.Path.join(tlsn_dir,basename,"raw.txt") + "'> raw  </a>");
 	}).catch( function(error){
 	updateRow(basename,2,"<img src='chrome://tlsnotary/content/cross.png' height='30' width='30' ></img> Not verified: "+ error);
