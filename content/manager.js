@@ -34,7 +34,6 @@ function addNewRow(filename,imported,verified,verifier,html_link){
 }
 
 function deleteFile(basename){
-	//TODO dialog
 	var r = confirm("This will remove the entire directory:"+basename.id+", including html. Are you sure?");
 	if (r){
 	    OS.File.removeDir(OS.Path.join(tlsn_dir,basename.id));
@@ -152,8 +151,12 @@ function verifyEntry(basename){
 	updateRow(basename,2,"<img src='chrome://tlsnotary/content/check.png' height='30' width='30' ></img> Valid");
 	//console.log("Pubkey: "+ba2hex(notary_pubkey));
 	updateRow(basename,3,"tlsnotarygroup"); //TODO: pretty print pubkey?
-	updateRow(basename,4,"<a href = 'file:///" + OS.Path.join(tlsn_dir,basename,"html.html") + "'> view  </a> ,\
-	<a href = 'file:///" + OS.Path.join(tlsn_dir,basename,"raw.txt") + "'> raw  </a>");
+	var html_link = getTLSNdir()
+	html_link.append(basename);
+	html_link.append('html.html');
+	block_urls.push(html_link.path);
+	updateRow(basename,4,"<a href = 'file://" + html_link.path + "'> view  </a> ,\
+	<a href = 'file://" + OS.Path.join(tlsn_dir,basename,"raw.txt") + "'> raw  </a>");
 	}).catch( function(error){
 	updateRow(basename,2,"<img src='chrome://tlsnotary/content/cross.png' height='30' width='30' ></img> Not verified: "+ error);
 	updateRow(basename,3,"none");
