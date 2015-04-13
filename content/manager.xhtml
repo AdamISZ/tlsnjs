@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Manage your TLSNotary notarization files.</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <meta name="description" content="tlsnotary" />
+    <link rel="stylesheet" href="manager.css" type="text/css" media="screen"/>
+</head>
+<body onload="loadManager()">
+
+<script  type="text/javascript;version=1.8" src="main.js"></script>
+  <script type="text/javascript;version=1.8" src="CryptoJS/components/core.js"></script>
+  <script type="text/javascript;version=1.8" src="CryptoJS/components/md5.js"></script>
+  <script type="text/javascript;version=1.8" src="CryptoJS/components/evpkdf.js"></script>
+  <script type="text/javascript;version=1.8" src="CryptoJS/components/enc-base64.js"></script>
+  <script type="text/javascript;version=1.8" src="CryptoJS/components/sha1.js"></script>
+  <script type="text/javascript;version=1.8" src="CryptoJS/components/sha256.js"></script>
+  <script type="text/javascript;version=1.8" src="CryptoJS/components/hmac.js"></script>
+  <script type="text/javascript;version=1.8" src="CryptoJS/components/cipher-core.js"></script>
+  <script type="text/javascript;version=1.8" src="CryptoJS/components/aes.js"></script>
+  <script type="text/javascript;version=1.8" src="CryptoJS/components/pad-nopadding.js"></script>
+  <script type="text/javascript;version=1.8" src="jsbn.js"></script>
+  <script type="text/javascript;version=1.8" src="jsbn2.js"></script>
+  <script type="text/javascript;version=1.8" src="pako.js"></script>
+  <script type="text/javascript;version=1.8" src="tlsn.js"></script>
+  <script type="text/javascript;version=1.8" src="tlsn_utils.js"></script> 
+  <script type="text/javascript;version=1.8" src="button.js"></script> 
+  <script type="text/javascript;version=1.8" src="manager.js"></script>
+  
+<div id="mydata">
+<b>Existing notarization (.tlsn) files ...</b> 
+<button  id="refresher" onclick="loadManager()" title="refresh table"><em class="leftImage"></em>Refresh</button>
+<button id="import" onclick="importTLSNFiles()" title="import a .tlsn file from disk">Import</button>
+
+<table class="table1" id="myTableData">
+    <thead>
+    <tr>
+        <th scope="col" abbr="Filename">Filename</th>
+        <th scope="col" abbr="Date">Last Modified Date</th>
+        <th scope="col" abbr="Verified">Verified</th>
+	<th scope="col" abbr="Verifier">Verifier</th>
+	<th scope="col" abbr="Html">View Html</th>
+    </tr>	
+    </thead>
+    
+    <tbody>
+	</tbody>
+</table>
+</div>
+
+</body>
+</html>

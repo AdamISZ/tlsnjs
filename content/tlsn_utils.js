@@ -1,3 +1,5 @@
+const {classes: Cc2, interfaces: Ci2, utils: Cu2} = Components;
+
 function ba2ua(ba){
 	var ua = new Uint8Array(ba.length);
 	for (var i = 0; i < ba.length; i++) {
@@ -265,13 +267,13 @@ function getTime(){
 }
 
 function getTLSNdir(){
-	var localDir = Cc["@mozilla.org/file/directory_service;1"].
-			getService(Ci.nsIProperties).get("ProfD", Ci.nsIFile);
+	var localDir = Cc2["@mozilla.org/file/directory_service;1"].
+			getService(Ci2.nsIProperties).get("ProfD", Ci2.nsIFile);
 
 	localDir.append("TLSNotary");
 	 if (!localDir.exists() || !localDir.isDirectory()) {
 		// read and write permissions to owner and group, read-only for others.
-		localDir.create(Ci.nsIFile.DIRECTORY_TYPE, 0774);
+		localDir.create(Ci2.nsIFile.DIRECTORY_TYPE, 0774);
 	}
 	return localDir;
 }

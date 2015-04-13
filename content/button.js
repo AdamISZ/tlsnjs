@@ -21,18 +21,23 @@ let main = {
 	}
   },
   verify: function() {
+	var dispdir = Components.classes["@mozilla.org/file/directory_service;1"].
+     getService(Components.interfaces.nsIProperties).
+     get("ProfD", Components.interfaces.nsIFile);
+        dispdir.append("TLSNotary")
 	const nsIFilePicker = Components.interfaces.nsIFilePicker;
 	var fp = Components.classes["@mozilla.org/filepicker;1"]
 				   .createInstance(nsIFilePicker);
 	fp.init(window, "Select the tlsn file you want to verify", nsIFilePicker.modeOpen);
+	fp.displayDirectory = dispdir;
 	var rv = fp.show();
 	if (rv == nsIFilePicker.returnOK || rv == nsIFilePicker.returnReplace) {
 	  var path = fp.file.path;
-	  verify_tlsn_and_show_html(path);
+	  verify_tlsn_and_show_html(path, true);
 	}
   },
   manage: function() {
-	alert('Not implemented yet')
+      openManager();
   },
   
   
