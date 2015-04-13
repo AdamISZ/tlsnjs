@@ -457,17 +457,21 @@ function dumpSecurityInfo(channel,urldata) {
 //blocks http request coming from block_tab
 var httpRequestBlocker = {
 	observe: function (httpChannel, aTopic, aData) {
-		if (aTopic !== "http-on-modify-request") return;
-		if (!(httpChannel instanceof Ci.nsIHttpChannel)) return;    
-		var notificationCallbacks;
-		if (httpChannel.notificationCallbacks) {
-			notificationCallbacks = httpChannel.notificationCallbacks;
+		try{
+			if (aTopic !== "http-on-modify-request") return;
+			if (!(httpChannel instanceof Ci.nsIHttpChannel)) return;    
+			var notificationCallbacks;
+			if (httpChannel.notificationCallbacks) {
+				notificationCallbacks = httpChannel.notificationCallbacks;
+			}
+			else if (httpChannel.loadGroup && httpChannel.loadGroup.notificationCallbacks) {
+				notificationCallbacks = httpChannel.loadGroup.notificationCallbacks;        
+			}
+			else return;
+			var path = notificationCallbacks.getInterface(Components.interfaces.nsIDOMWindow).top.location.pathname;
+		} catch(e){
+			return;
 		}
-		else if (httpChannel.loadGroup && httpChannel.loadGroup.notificationCallbacks) {
-			notificationCallbacks = httpChannel.loadGroup.notificationCallbacks;        
-		}
-		else return;
-		var path = notificationCallbacks.getInterface(Components.interfaces.nsIDOMWindow).top.location.pathname;
 		for(var i=0; i < block_urls.length; i++){
 			if (block_urls[i] === path){
 				console.log('found matching tab, ignoring request');
