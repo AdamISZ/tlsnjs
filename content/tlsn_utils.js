@@ -262,7 +262,7 @@ function gunzip_http(http_data){
 
 function getTime(){
 	var today = new Date();
-	var time = today.getFullYear()+'-'+("00"+(today.getMonth()+1)).slice(-2)+'-'+("00"+today.getDate()).slice(-2)+'-'+ ("00"+today.getHours()).slice(-2)+':'+("00"+today.getMinutes()).slice(-2)+':'+("00"+today.getSeconds()).slice(-2);
+	var time = today.getFullYear()+'-'+("00"+(today.getMonth()+1)).slice(-2)+'-'+("00"+today.getDate()).slice(-2)+'-'+ ("00"+today.getHours()).slice(-2)+'-'+("00"+today.getMinutes()).slice(-2)+'-'+("00"+today.getSeconds()).slice(-2);
 	return time;
 }
 

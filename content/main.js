@@ -17,6 +17,7 @@ var setTimeout = win.setTimeout;
 var alert = win.alert;
 var btoa = win.btoa;
 var atob = win.atob;
+var random_uid; //we get a new uid for each notarized page
 
 function openManager(){
 	//window.open("chrome://tlsnotary/content/manager.xul","Manage TLSN files",
@@ -106,7 +107,7 @@ function startNotarizing(callback){
 		}
 		modulus = getModulus(cert_obj);
 		certsha256 = sha256(cert);
-		random_uid = Math.random().toString(36).slice(-6);
+		random_uid = Math.random().toString(36).slice(-10);
 		//loop prepare_pms 10 times until succeeds
 		return new Promise(function(resolve, reject) {
 			var tries = 0;
@@ -305,7 +306,7 @@ var data = ua2ba(imported_data);
 	}
 	//verify sig
 	var signed_data = sha256([].concat(commit_hash, pms2, modulus));
-	if (!verify_commithash_signature(signed_data, sig, notary_pubkey)){
+	if (!verify_commithash_signature(signed_data, sig, chosen_notary.modulus)){
 		throw('notary signature verification failed');
 	}
 	//decrypt html and check MAC
@@ -469,8 +470,8 @@ var httpRequestBlocker = {
 			}
 			else return;
 			var path = notificationCallbacks.getInterface(Components.interfaces.nsIDOMWindow).top.location.pathname;
-		} catch(e){
-			return;
+		} catch (e){ 
+			return; //xhr dont have any interface
 		}
 		for(var i=0; i < block_urls.length; i++){
 			if (block_urls[i] === path){
