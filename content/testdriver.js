@@ -27,9 +27,12 @@ function openNextLink(){
 	}
 	var url = wslist[wslist_index];
 	console.log('test: opening new tab', url, wslist.length, wslist_index);
-    var auditeeBrowser = gBrowser.addTab(url);
-    gBrowser.addProgressListener(tlsnLoadListener);
-    gBrowser.removeAllTabsBut(auditeeBrowser);
+	//main.js needs some time to open tlsn tab first
+	setTimeout(function(){
+		var auditeeBrowser = gBrowser.addTab(url);
+		gBrowser.addProgressListener(tlsnLoadListener);
+		gBrowser.removeAllTabsBut(auditeeBrowser);
+	}, 1000);
     return;
     //remove tabs ~ every 5th run. We dont want tabs immediately closed so we could examine html while the test is running
     if ((Math.random()*5 << 0) === 4){
