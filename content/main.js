@@ -14,6 +14,7 @@ var block_urls = []; //an array of urls (filesystem paths) for which all http re
 //navigator must be exposed for jsbn.js
 var navigator = win.navigator;
 var setTimeout = win.setTimeout;
+var clearTimeout = win.clearTimeout;
 var alert = win.alert;
 var btoa = win.btoa;
 var atob = win.atob;
@@ -117,14 +118,19 @@ function startNotarizing(callback){
 					resolve(args);
 				}).catch(function(error){
 					console.log('caught error', error);
-					if (error != 'PMS trial failed'){
-						alert('caught error ' + error);
-					}
-					if (tries == 10){
-						alert('10 tries')
-						reject('10 tries');
+					if (error.startsWith('Timed out')){
+						reject(error);
 						return;
 					}
+					if (error != 'PMS trial failed'){
+						reject('in prepare_pms: caught error ' + error);
+						return;
+					}
+					if (tries == 10){
+						reject('Could not prepare PMS after 10 tries');
+						return;
+					}
+					//else PMS trial failed
 					loop(resolve, reject);
 				});
 			};
