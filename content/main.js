@@ -21,8 +21,6 @@ var atob = win.atob;
 var random_uid; //we get a new uid for each notarized page
 
 function openManager(){
-	//window.open("chrome://tlsnotary/content/manager.xul","Manage TLSN files",
-	//"chrome,centerscreen");
 	var t = gBrowser.addTab("chrome://tlsnotary/content/manager.xhtml");
 	gBrowser.selectedTab = t;
 	
@@ -269,7 +267,6 @@ function save_session_and_open_html(args, server){
 		install_notification(t, commonName, raw.path);
 	});
 }
-	
 
 function verify_tlsn(imported_data){
 var data = ua2ba(imported_data);
