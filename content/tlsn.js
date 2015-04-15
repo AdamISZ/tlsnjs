@@ -177,7 +177,9 @@ Socket.prototype.recv = function(is_handshake){
 		//keep checking until either timeout or enough data gathered
 		var check_recv = function(resolve, reject){
 			if ((total_waited / 1000) >= 20){
+				console.log('rejecting');
 				reject('socket timed out');
+				return;
 			}
 			if (sock.buffer.length === 0){
 				console.log('Another timeout in recv');
