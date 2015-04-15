@@ -1,24 +1,45 @@
 //root directory of managed files
 var tlsn_dir = getTLSNdir().path;
 //array of existing files
-var tlsn_files = [];
-var tlsn_lmdates = [];
+var tlsn_files = []; //subdirectories of TLSNotary directory
+//keys are directory names (which have fixed format 
+//timestamp-server name), values are [tlsn filenames, table row index]:
+var tdict ={}; 
 
 
 function importTLSNFiles(){
 	main.verify();
 	loadManager();
 }
-function addNewRow(filename,imported,verified,verifier,html_link){
+
+function doRename(t){
+    var new_name = window.prompt("Enter a new name for the notarization file:");
+    if (!new_name.endsWith(".tlsn")){
+	new_name = new_name + ".tlsn";
+    }
+    console.log("t.id is: "+t.id);
+    basename = OS.Path.basename(t.id);
+    original_path = t.id;
+    basedir = OS.Path.dirname(t.id);
+    //rename file on disk
+    OS.File.move(original_path,OS.Path.join(basedir,new_name));
+    loadManager();
+    }
+function addNewRow(fileEntry, dirname, fullpath, imported,verified,verifier,html_link){
+    let sname = dirname.substr(20);
+    if (imported){ sname = sname.slice(0,-9);}
+    tstamp = dirname.substr(0,19);
     var tbody = document.getElementById("myTableData").getElementsByTagName('tbody')[0];
     var rowCount = tbody.rows.length;
     var row = tbody.insertRow(rowCount);
-    row.insertCell(0).innerHTML = filename;
+    tdict[dirname].push(rowCount); //sets the row index of this entry
+    row.insertCell(0).innerHTML =  fileEntry.name.slice(0,-5) + " <button id='" + fileEntry.path + "' style='float: right;' onclick='doRename(event.target)'> Rename </button>"  ;
+    row.insertCell(1).innerHTML = tstamp + ' , ' + sname;
     if (!imported){
-	row.insertCell(1).innerHTML = "mine";
+	row.insertCell(2).innerHTML = "mine";
     }
     else {
-	row.insertCell(1).innerHTML = "IMPORTED";
+	row.insertCell(2).innerHTML = "imported";
 	}
     if (verified){
 	tbi = 'UNINITIALISED';
@@ -26,12 +47,13 @@ function addNewRow(filename,imported,verified,verifier,html_link){
     else {
         tbi = 'NO';
     }
-    row.insertCell(2).innerHTML = tbi;
-    row.insertCell(3).innerHTML = verifier;
-    row.insertCell(4).innerHTML = html_link;
-    button_html = "<button id='"+filename+"' title='permanently remove this set of files from disk' onclick='deleteFile(event.target)'>Delete</button>";
-    row.insertCell(5).innerHTML = button_html;
+    row.insertCell(3).innerHTML = tbi;
+    row.insertCell(4).innerHTML = verifier;
+    row.insertCell(5).innerHTML = html_link;
+    button_html = "<button id='"+dirname+"' title='permanently remove this set of files from disk' onclick='deleteFile(event.target)'>Delete</button>";
+    row.insertCell(6).innerHTML = button_html;
 }
+
 
 function deleteFile(basename){
 	var r = confirm("This will remove the entire directory:"+basename.id+", including html. Are you sure?");
@@ -42,10 +64,12 @@ function deleteFile(basename){
 }
 
 function clearTable(){
+   tdict = {}
    var table = document.getElementById("myTableData");
    table.innerHTML = "<thead> \
     <tr> \
-        <th title='date file was created and site name of the page' scope='col' abbr='Filename'>File details</th> \
+	<th title='Name of notarization file; click Rename to change the name to something more descriptive' scope='col' abbr='File'>File</th> \
+        <th title='date file was created and site name of the page' scope='col' abbr='Filename'>Creation date , server name</th> \
         <th title='mine if the file was created by you, imported otherwise' scope='col' abbr='Date'>Mine/imported</th> \
         <th title='whether the addon verifies that the contents are signed correctly' scope='col' abbr='Verified'>Verified</th> \
 	<th title='the identity of the verifying notary server' scope='col' abbr='Verifier'>Verifier</th> \
@@ -61,105 +85,81 @@ function clearTable(){
 function loadManager() {
    clearTable();
    tlsn_files = [];
-   tlsn_lmdates = [];	
+   tlsn_fns = [];	
   let iterator = new OS.File.DirectoryIterator(tlsn_dir);
-   //Iterate through the directory
   let promise = iterator.forEach(
     function onEntry(entry) {
-	tlsn_files.push(entry);
-	
-	//Not used at the moment; may be useful to sanity check modification date?
-	let promise2 = OS.File.stat(entry.path);
-	promise2.then(
-	function onSuccess(info) { // |info| is an instance of |OS.File.Info|
-	    tlsn_lmdates.push(info.lastModificationDate);
-	},
-	function onFailure(reason) {
-	  console.log("File access failure");
-	})
+	if (!entry.isDir){
+	    console.log("entry was not a directory, ignored:"+entry.path);
+	}
+	else {
+	    tlsn_files.push(entry);	    
+	}    
     }
   );
   
-  // Finally, close the iterator
   promise.then(
     function onSuccess() {
       iterator.close();
-      for ( i=0; i < tlsn_files.length; i++){
-        //sanity check; all files here should be directories;
-	//if the user has placed any other files there, ignore them.
-	if (!tlsn_files[i].isDir){
-	    console.log("entry was not a directory");
-	    continue;
-	}
+      for (var i=0; i < tlsn_files.length; i++){
 	let imported = false;
-	if (tlsn_files[i].name.match("-IMPORTED$")=="-IMPORTED"){ imported = true;}
-	addNewRow(tlsn_files[i].name,imported,false,'tlsnotarygroup',"none");
-	verifyEntry(tlsn_files[i].name);
-      }
-      
-    },
-    function onFailure(reason) {
-      iterator.close();
+	if (tlsn_files[i].name.match("-IMPORTED$")=="-IMPORTED"){ 
+	    imported = true;
+	}
+	var iterator2 = new OS.File.DirectoryIterator(tlsn_files[i].path);
+	
+	let promise2 = iterator2.forEach(
+	function (entry2) {  
+	    if (entry2.path.endsWith(".tlsn")){
+		dirname = OS.Path.basename(OS.Path.dirname(entry2.path));
+		tdict[dirname]=[entry2.path];
+		addNewRow(entry2,dirname,imported,false,'tlsnotarygroup',"none");
+		verifyEntry(dirname, entry2.path);
+	   }
+	});
+	promise2.then(
+	   function() {
+	    iterator2.close();
+      } ,
+    function (reason) {
+      iterator2.close();
       throw reason;
     }
-  ); 
-    console.log("Page load finished");
- 
+     );
+    }
+}, function onFailure(reason){
+    iterator.close();
+    throw reason;
+    });
 }
 
 function updateRow(basename, col, newval){
 	//TODO update multiple columns
 	var tbody = document.getElementById("myTableData").getElementsByTagName('tbody')[0];
-	var index = -1;
-	for (i =0; i < tlsn_files.length; i++){
-		if (tlsn_files[i].name == basename){
-			index = i;
-		}
-	}
-	if (index == -1){
-		console.log("No such row: "+basename);
-		return;
-	}
+	var index = tdict[basename][1];
+	console.log("in update row, using index: "+index);
 	row = tbody.rows[index];
 	cell = row.cells[col];
 	cell.innerHTML = newval;
 }
 
-function get_filename_from_basename(basename){
-	var filename;
-	if (basename.match("-IMPORTED$")=="-IMPORTED"){
-		//note: in the absence of some kind of key signing,
-		//there can only be an artificial distinction between
-		//'my' files and imported ones
-	    filename = basename.slice(0,-"-IMPORTED".length);
-	}
-	else {
-	    filename = basename;
-	}
-	//filename now has no "IMPORTED" suffix, strip timestamp
-	filename = filename.slice(20);
-	//TODO check it looks like a real name, check it exists
-	return OS.Path.join(tlsn_dir, basename, filename+'.tlsn');
-}
-
-function verifyEntry(basename){
-	fn = get_filename_from_basename(basename);
-	var path = OS.Path.join(tlsn_dir, basename, fn);	
+function verifyEntry(basename, path){
+	console.log("About to read a file with path: "+path);
 	OS.File.read(path).then( function(imported_data){
 	verify_tlsn(imported_data);
 	}).then(function (){
-	updateRow(basename,2,"<img src='chrome://tlsnotary/content/check.png' height='30' width='30' ></img> Valid");
+	updateRow(basename,3,"<img src='chrome://tlsnotary/content/check.png' height='30' width='30' ></img> Valid");
 	//console.log("Pubkey: "+ba2hex(notary_pubkey));
-	updateRow(basename,3,"tlsnotarygroup"); //TODO: pretty print pubkey?
-	var html_link = getTLSNdir()
+	updateRow(basename,4,"tlsnotarygroup"); //TODO: pretty print pubkey?
+	var html_link = getTLSNdir();
 	html_link.append(basename);
 	html_link.append('html.html');
 	block_urls.push(html_link.path);
-	updateRow(basename,4,"<a href = 'file://" + html_link.path + "'> view  </a> ,\
+	updateRow(basename,5,"<a href = 'file://" + html_link.path + "'> view  </a> ,\
 	<a href = 'file://" + OS.Path.join(tlsn_dir,basename,"raw.txt") + "'> raw  </a>");
 	}).catch( function(error){
-	updateRow(basename,2,"<img src='chrome://tlsnotary/content/cross.png' height='30' width='30' ></img> Not verified: "+ error);
-	updateRow(basename,3,"none");
+	updateRow(basename,3,"<img src='chrome://tlsnotary/content/cross.png' height='30' width='30' ></img> Not verified: "+ error);
 	updateRow(basename,4,"none");
+	updateRow(basename,5,"none");
 	});	
 }
