@@ -3,15 +3,28 @@ var tlsn_dir = getTLSNdir().path;
 //array of existing files
 var tlsn_files = []; //subdirectories of TLSNotary directory
 //keys are directory names (which have fixed format 
-//timestamp-server name), values are [tlsn filenames, table row index]:
+//timestamp-server name), values are [tlsn OS.File object, boolean imported, table row index]:
 var tdict ={}; 
-
+var tloaded = false;
 
 function importTLSNFiles(){
 	main.verify();
 	loadManager();
 }
 
+function tableRefresher(){
+    if (!tloaded){
+	setTimeout(tableRefresher,500);
+	return;
+    }
+    //table is ready to be drawn
+    for (var d in tdict){
+	addNewRow(tdict[d][0],d,tdict[d][1],false,'tlsnotarygroup',"none");
+	verifyEntry(d, tdict[d][0].path);
+    }
+    tloaded = false; //wait for next change
+    setTimeout(tableRefresher, 500);
+}
 function doRename(t){
     var new_name = window.prompt("Enter a new name for the notarization file:");
     if (!new_name.endsWith(".tlsn")){
@@ -31,7 +44,7 @@ function addNewRow(fileEntry, dirname, fullpath, imported,verified,verifier,html
     tstamp = dirname.substr(0,19);
     var tbody = document.getElementById("myTableData").getElementsByTagName('tbody')[0];
     var rowCount = tbody.rows.length;
-    var row = tbody.insertRow(rowCount);
+    var row = tbody.insertRow(rowCount); 
     tdict[dirname].push(rowCount); //sets the row index of this entry
     row.insertCell(0).innerHTML =  fileEntry.name.slice(0,-5) + " <button id='" + fileEntry.path + "' style='float: right;' onclick='doRename(event.target)'> Rename </button>"  ;
     row.insertCell(1).innerHTML = tstamp + ' , ' + sname;
@@ -83,9 +96,9 @@ function clearTable(){
 
 //reloads whole file table, refreshing contents
 function loadManager() {
-   clearTable();
+   clearTable(); //resets tdict also 
    tlsn_files = [];
-   tlsn_fns = [];	
+   tloaded = false;
   let iterator = new OS.File.DirectoryIterator(tlsn_dir);
   let promise = iterator.forEach(
     function onEntry(entry) {
@@ -112,9 +125,10 @@ function loadManager() {
 	function (entry2) {  
 	    if (entry2.path.endsWith(".tlsn")){
 		dirname = OS.Path.basename(OS.Path.dirname(entry2.path));
-		tdict[dirname]=[entry2.path];
-		addNewRow(entry2,dirname,imported,false,'tlsnotarygroup',"none");
-		verifyEntry(dirname, entry2.path);
+		tdict[dirname]=[entry2, imported];
+		if (Object.keys(tdict).length == tlsn_files.length){
+		    tloaded = true;
+		}
 	   }
 	});
 	promise2.then(
@@ -136,8 +150,7 @@ function loadManager() {
 function updateRow(basename, col, newval){
 	//TODO update multiple columns
 	var tbody = document.getElementById("myTableData").getElementsByTagName('tbody')[0];
-	var index = tdict[basename][1];
-	console.log("in update row, using index: "+index);
+	var index = tdict[basename][2];
 	row = tbody.rows[index];
 	cell = row.cells[col];
 	cell.innerHTML = newval;
@@ -163,3 +176,5 @@ function verifyEntry(basename, path){
 	updateRow(basename,5,"none");
 	});	
 }
+
+tableRefresher();
