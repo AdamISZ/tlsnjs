@@ -27,6 +27,26 @@ function openManager(){
 	
 }
 
+function saveTLSNFile(existing_file){
+    var nsIFilePicker = Ci.nsIFilePicker;
+var fp = Cc["@mozilla.org/filepicker;1"].createInstance(nsIFilePicker);
+fp.init(window, "Save your notification file", nsIFilePicker.modeSave);
+//don't set the display directory; leave as default
+var rv = fp.show();
+	if (rv == nsIFilePicker.returnOK || rv == nsIFilePicker.returnReplace) {
+	  var path = fp.file.path;
+	  //write the file
+	  let promise = OS.File.copy(existing_file, fp.file.path);
+	  promise.then(function(){
+		console.log("File write OK");
+		},
+		function (e){
+		console.log("Caught error writing file: "+e);
+		}
+		);
+	}
+}
+    
 function init(){
 	//sometimes gBrowser is not available
 	if (gBrowser === null || typeof(gBrowser) === "undefined"){
