@@ -19,12 +19,13 @@ function tableRefresher(){
     }
     //table is ready to be drawn
     for (var d in tdict){
-	addNewRow(tdict[d][0],d,tdict[d][1],false,'tlsnotarygroup',"none");
+	addNewRow(tdict[d][0],d,tdict[d][1],'tlsnotarygroup',"none");
 	verifyEntry(d, tdict[d][0].path);
     }
     tloaded = false; //wait for next change
     setTimeout(tableRefresher, 500);
 }
+
 function doRename(t){
     var new_name = window.prompt("Enter a new name for the notarization file:");
     if (!new_name.endsWith(".tlsn")){
@@ -37,8 +38,15 @@ function doRename(t){
     //rename file on disk
     OS.File.move(original_path,OS.Path.join(basedir,new_name));
     loadManager();
-    }
-function addNewRow(fileEntry, dirname, fullpath, imported,verified,verifier,html_link){
+}
+
+function doSave(t){
+    filename = tdict[t.id][0].path;
+    saveTLSNFile(filename);
+    //no need to reload here
+}
+
+function addNewRow(fileEntry, dirname, imported,verified,verifier,html_link){
     let sname = dirname.substr(20);
     if (imported){ sname = sname.slice(0,-9);}
     tstamp = dirname.substr(0,19);
@@ -46,7 +54,9 @@ function addNewRow(fileEntry, dirname, fullpath, imported,verified,verifier,html
     var rowCount = tbody.rows.length;
     var row = tbody.insertRow(rowCount); 
     tdict[dirname].push(rowCount); //sets the row index of this entry
-    row.insertCell(0).innerHTML =  fileEntry.name.slice(0,-5) + " <button id='" + fileEntry.path + "' style='float: right;' onclick='doRename(event.target)'> Rename </button>"  ;
+    row.insertCell(0).innerHTML =  fileEntry.name.slice(0,-5) + 
+    " <button id='" + fileEntry.path + "' style='float: right;' onclick='doRename(event.target)'> Rename </button>" +
+    " <button id='" + dirname + "' style='float: right;' onclick='doSave(event.target)'> Export </button>";
     row.insertCell(1).innerHTML = tstamp + ' , ' + sname;
     if (!imported){
 	row.insertCell(2).innerHTML = "mine";
