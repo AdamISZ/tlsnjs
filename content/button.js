@@ -7,7 +7,7 @@ let prefs = Services.prefs;
 
 const NS_XUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul",
       PREFS_BRANCH = Services.prefs.getBranch("extensions.tlsnotary.button-position."),
-      PREF_TB = "toolbar",
+      PREF_TB = "nav-bar",
       PREF_NEXT = "next-item",
       BUTTON_ID = "tlsnotary-button";
 
@@ -46,9 +46,14 @@ let main = {
    */
   getPrefs: function() {
     try {
+	  var tb = PREFS_BRANCH.getCharPref(PREF_TB);
+	  var next = PREFS_BRANCH.getCharPref(PREF_NEXT);
+	  if (tb === "" || next === ""){
+		  throw ('use default');
+	  }
       return {
-        toolbarId: PREFS_BRANCH.getCharPref(PREF_TB),
-        nextItemId: PREFS_BRANCH.getCharPref(PREF_NEXT)
+        toolbarId: tb,
+        nextItemId: next
       };
     } catch(e) {
       return { // default position

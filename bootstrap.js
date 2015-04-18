@@ -95,8 +95,8 @@ function afterCustomize(e) {
   let toolbarId, nextItemId;
   if (button) {
     let parent = button.parentNode,
-        nextItem = button.nextSibling;
-    if (parent && parent.localName == "toolbar") {
+    nextItem = button.nextSibling;
+    if (parent) {
       toolbarId = parent.id;
       nextItemId = nextItem && nextItem.id;
     }
