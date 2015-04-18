@@ -2,6 +2,7 @@
 var bootstrapjs_exception;
 var thisaddon;
 var jsloaded = false;
+var after_install = false;
 try {
 
 const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
@@ -77,15 +78,6 @@ function loadIntoWindow(window) {
                          nextItem);
     }
     window.addEventListener("aftercustomization", afterCustomize, false);
-    
-    // add hotkey
-    let replaceKey = doc.createElementNS(NS_XUL, "key");
-    replaceKey.setAttribute("id", "RB:Replace");
-    replaceKey.setAttribute("key", "D");
-    replaceKey.setAttribute("modifiers", "accel,alt");
-    replaceKey.setAttribute("oncommand", "void(0);");
-    replaceKey.addEventListener("command", main.action, true);
-    $(doc, "mainKeyset").appendChild(replaceKey);
   }
 }
 
@@ -95,8 +87,8 @@ function afterCustomize(e) {
   let toolbarId, nextItemId;
   if (button) {
     let parent = button.parentNode,
-        nextItem = button.nextSibling;
-    if (parent && parent.localName == "toolbar") {
+    nextItem = button.nextSibling;
+    if (parent) {
       toolbarId = parent.id;
       nextItemId = nextItem && nextItem.id;
     }
@@ -160,8 +152,9 @@ function loadjs(){
   jsloaded = true;
   var addon = thisaddon;
   include(addon, "button.js");
+  include(addon, "oracles.js");
+  include(addon, "tlsn_utils.js");
   include(addon, "main.js");
-  include(addon, "testdriver.js");
   include(addon, "CryptoJS/components/core.js");
   include(addon, "CryptoJS/components/md5.js");
   include(addon, "CryptoJS/components/evpkdf.js");
@@ -176,7 +169,7 @@ function loadjs(){
   include(addon, "jsbn2.js");
   include(addon, "pako.js");
   include(addon, "tlsn.js");
-  include(addon, "tlsn_utils.js");
+  include(addon, "testdriver.js");
 }
 
 
@@ -184,7 +177,9 @@ function shutdown(data, reason) {
   Services.ww.unregisterNotification(windowWatcher);
   eachWindow(unloadFromWindow);
 }
-function install(data,reason) {}
+function install(data,reason) {
+	after_install = true;
+}
 function uninstall(data,reason) {}
 
 } catch (e){
