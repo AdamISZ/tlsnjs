@@ -277,3 +277,11 @@ function getTLSNdir(){
 	}
 	return localDir;
 }
+
+function get_xhr(){
+	/*if (is_chrome){
+		return new XMLHttpRequest();
+	}*/
+	//else firefox addon
+	return Components.classes["@mozilla.org/xmlextras/xmlhttprequest;1"].createInstance();
+}

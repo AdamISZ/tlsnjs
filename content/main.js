@@ -29,32 +29,44 @@ function openManager(){
 	
 }
 
+
 function saveTLSNFile(existing_file){
     var nsIFilePicker = Ci.nsIFilePicker;
-var fp = Cc["@mozilla.org/filepicker;1"].createInstance(nsIFilePicker);
-fp.init(window, "Save your notification file", nsIFilePicker.modeSave);
-//don't set the display directory; leave as default
-var rv = fp.show();
-	if (rv == nsIFilePicker.returnOK || rv == nsIFilePicker.returnReplace) {
-	  var path = fp.file.path;
-	  //write the file
-	  let promise = OS.File.copy(existing_file, fp.file.path);
-	  promise.then(function(){
-		console.log("File write OK");
-		},
-		function (e){
-		console.log("Caught error writing file: "+e);
-		}
-		);
-	}
+	var fp = Cc["@mozilla.org/filepicker;1"].createInstance(nsIFilePicker);
+	fp.init(window, "Save your notification file", nsIFilePicker.modeSave);
+	//don't set the display directory; leave as default
+	var rv = fp.show();
+   if (rv == nsIFilePicker.returnOK || rv == nsIFilePicker.returnReplace) {
+	 var path = fp.file.path;
+	 //write the file
+	 let promise = OS.File.copy(existing_file, fp.file.path);
+	 promise.then(function(){
+		   console.log("File write OK");
+		   },
+		   function (e){
+		   console.log("Caught error writing file: "+e);
+		   }
+		   );
+   }
 }
-    
+
+
+
+
 function init(){
 	//sometimes gBrowser is not available
 	if (gBrowser === null || typeof(gBrowser) === "undefined"){
 		gBrowser = win.gBrowser;
 		setTimeout(init, 100);
 		return;
+	}
+	if (after_install){
+		//async check oracles and if the check fails, sets a global var
+		var main_pubkey = {pubkey:''};
+		check_oracle(chosen_notary.main, 'main', main_pubkey).
+		then(function(){
+			check_oracle(chosen_notary.sig, 'sig',  main_pubkey);
+		});
 	}
 	import_reliable_sites();
 	startListening();
@@ -133,7 +145,10 @@ function startListening(){
 
 
 //callback is used in testing to signal when this page's n10n finished
-function startNotarizing(callback){	
+function startNotarizing(callback){
+	if (! oracles_intact){
+		alert('Cannot notarize because something is wrong with TLSNotary server. Please try again later');
+	}
     var audited_browser = gBrowser.selectedBrowser;
     var tab_url_full = audited_browser.contentWindow.location.href;
     
@@ -396,7 +411,7 @@ var data = ua2ba(imported_data);
 	}
 	//verify sig
 	var signed_data = sha256([].concat(commit_hash, pms2, modulus));
-	if (!verify_commithash_signature(signed_data, sig, chosen_notary.modulus)){
+	if (!verify_commithash_signature(signed_data, sig, chosen_notary.sig.modulus)){
 		throw('notary signature verification failed');
 	}
 	//decrypt html and check MAC
