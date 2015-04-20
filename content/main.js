@@ -290,8 +290,8 @@ function create_final_html(html_with_headers, server_name, is_imported){
 	localDir.append(time+'-'+server_name+imported_str); 
 	localDir.create(Ci.nsIFile.DIRECTORY_TYPE, 0774);
 
-	var path_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
-	var raw_response = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+	var path_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
+	var raw_response = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
 	path_html.initWithPath(localDir.path);
 	path_html.append('html.html');
 	 //see "Byte order mark"
@@ -339,7 +339,7 @@ function save_session_and_open_html(args, server){
 	create_final_html(html_with_headers, commonName)
 	.then(function(dir){
 		localDir = dir;
-		var path_tlsn = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+		var path_tlsn = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
 		path_tlsn.initWithPath(localDir.path);
 		path_tlsn.append(commonName+'.tlsn');
 		return OS.File.writeAtomic(path_tlsn.path, ba2ua([].concat(
@@ -365,10 +365,10 @@ function save_session_and_open_html(args, server){
 		)));
 	})
 	.then(function(){
-		var final_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+		var final_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
 		final_html.initWithPath(localDir.path);
 		final_html.append('html.html');
-		var raw = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+		var raw = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
 		raw.initWithPath(localDir.path);
 		raw.append('raw.txt');
 		var t = gBrowser.addTab(final_html.path);
@@ -458,16 +458,16 @@ function verify_tlsn_and_show_html(path, create){
 		create_final_html(html_with_headers, commonName, true)
 		.then(function(dir){
 			localDir = dir;
-			var path_tlsn = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+			var path_tlsn = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
 			path_tlsn.initWithPath(localDir.path);
 			path_tlsn.append(commonName+'.tlsn');
 			return OS.File.writeAtomic(path_tlsn.path, imported_data);
 		})
 		.then(function(){
-			var final_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+			var final_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
 			final_html.initWithPath(localDir.path);
 			final_html.append('html.html');
-			var raw = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+			var raw = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
 			raw.initWithPath(localDir.path);
 			raw.append('raw.txt');
 			block_urls.push(final_html.path);
@@ -487,8 +487,8 @@ function verify_tlsn_and_show_html(path, create){
 function getCertObject(cert){
 	const nsIX509CertDB = Ci.nsIX509CertDB;
 	const nsX509CertDB = "@mozilla.org/security/x509certdb;1";
-	var certdb = Cc[nsX509CertDB].getService(nsIX509CertDB);
-	var cert_obj = certdb.constructX509FromBase64(b64encode(cert));
+	let certdb = Cc[nsX509CertDB].getService(nsIX509CertDB);
+	let cert_obj = certdb.constructX509FromBase64(b64encode(cert));
 	return cert_obj;
 }
 
@@ -520,7 +520,7 @@ function getModulus(cert_obj){
 }
 
 
-//verify the certificate against FF's certdb
+//verify the certificate against Firefox's certdb
 function verifyCert(cert_obj){
 	const nsIX509Cert = Ci.nsIX509Cert;
 	const nsIX509CertDB = Ci.nsIX509CertDB;
