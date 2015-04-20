@@ -38,8 +38,10 @@ var oracle =
 var chosen_notary = oracle;
 
 
-function getTimeDelta (later, sooner){
-	//get seconds from "2015-04-15T19:00:59.000Z"
+//assuming both events happened on the same day, get the time
+//difference between them in seconds
+//the time string looks like "2015-04-15T19:00:59.000Z"
+function getSecondsDelta (later, sooner){
 	assert (later.length == 24);
 	if (later.slice(0,11) !== sooner.slice(0, 11)){
 		return 999999; //not on the same day
@@ -106,12 +108,11 @@ function checkDescribeInstances(xmlDoc, instanceId, IP, type){
 	var volAttachTime = devices[0].getElementsByTagName('ebs')[0].getElementsByTagName('attachTime')[0].textContent;
 	var volumeId = devices[0].getElementsByTagName('ebs')[0].getElementsByTagName('volumeId')[0].textContent;
 	//get seconds from "2015-04-15T19:00:59.000Z"
-	assert(parseInt(volAttachTime.slice(-7, -5))- parseInt(launchTime.slice(-7, -5)) <= 3);
-	
+	assert(getSecondsDelta(volAttachTime, launchTime) <= 3);	
 	}catch(e){
 		return false;
 	}
-	return {'ownerId':ownerId, 'volumeId':volumeId, 'volAttachTime':volAttachTime};
+	return {'ownerId':ownerId, 'volumeId':volumeId, 'volAttachTime':volAttachTime, 'launchTime':launchTime};
 }
 
 
@@ -145,8 +146,7 @@ function checkDescribeVolumes(xmlDoc, instanceId, volumeId, volAttachTime, type)
 	assert(attVolume.getElementsByTagName('status')[0].textContent === 'attached');
 	var attTime = attVolume.getElementsByTagName('attachTime')[0].textContent;
 	assert(volAttachTime === attTime);
-	assert((parseInt(attTime.slice(-7, -5)) - parseInt(volCreateTime.slice(-7, -5))) === 0);
-	
+	assert(getSecondsDelta(attTime, volCreateTime) === 0);	
 	}catch(e){
 		return false;
 	}
@@ -154,10 +154,12 @@ function checkDescribeVolumes(xmlDoc, instanceId, volumeId, volAttachTime, type)
 }
 
 
-function checkGetConsoleOutput(xmlDoc, instanceId, type, main_pubkey){
+function checkGetConsoleOutput(xmlDoc, instanceId, launchTime, type, main_pubkey){
 	try{
 	assert(xmlDoc.getElementsByTagName('instanceId')[0].textContent === instanceId);
-	var timestamp = xmlDoc.getElementsByTagName('instanceId')[0].textContent;
+	var timestamp = xmlDoc.getElementsByTagName('timestamp')[0].textContent;
+	//prevent funny business: last consoleLog entry no later than 4 minutes after instance starts
+	assert(getSecondsDelta(timestamp, launchTime) <= 240);
 	var b64data = xmlDoc.getElementsByTagName('output')[0].textContent;
 	var logstr = ba2str(b64decode(b64data));
 	//now other string starting with xvd except for xvda
@@ -202,7 +204,8 @@ function checkGetConsoleOutput(xmlDoc, instanceId, type, main_pubkey){
 	}
 }
 
-
+// "userData" allows to pass an arbitrary script to the instance at launch. It MUST be empty.
+// This is a sanity check because the instance is stripped of the code which parses userData.	
 function checkDescribeInstanceAttribute(xmlDoc, instanceId){
 	try{
 	assert(xmlDoc.getElementsByTagName('instanceId')[0].textContent === instanceId);
@@ -226,7 +229,6 @@ function checkGetUser(xmlDoc, ownerId){
 
 
 function check_oracle(o, type, main_pubkey){
-	var ownerId;
 	return new Promise(function(resolve, reject) {
 		var xhr = get_xhr();
 		xhr.open('GET', o.DI, true);
@@ -254,38 +256,38 @@ function check_oracle(o, type, main_pubkey){
 					reject('checkDescribeVolumes');
 				}
 				else {
-					resolve(args.ownerId);
+					resolve({'ownerId':args.ownerId, 'launchTime':args.launchTime});
 				}
 			};
 			xhr.send();
 			console.log('sent');
 		});
 	})
-	.then(function(ownerId){
+	.then(function(args){
 		return new Promise(function(resolve, reject) {
 			var xhr = get_xhr();
 			xhr.open('GET', o.GU, true);
 			xhr.onload = function(){
 				var xmlDoc = xhr.responseXML;
-				var result = checkGetUser(xmlDoc, ownerId);
+				var result = checkGetUser(xmlDoc, args.ownerId);
 				if (!result){
 					reject('checkGetUser');
 				}
 				else {
-					resolve();
+					resolve(args.launchTime);
 				}
 			};
 			xhr.send();
 			console.log('sent');
 		});
 	})
-	.then(function(){
+	.then(function(launchTime){
 		return new Promise(function(resolve, reject) {
 			var xhr = get_xhr();
 			xhr.open('GET', o.GCO, true);
 			xhr.onload = function(){
 				var xmlDoc = xhr.responseXML;
-				var result = checkGetConsoleOutput(xmlDoc, o.instanceId, type, main_pubkey.pubkey);
+				var result = checkGetConsoleOutput(xmlDoc, o.instanceId, launchTime, type, main_pubkey.pubkey);
 				if (!result){
 					reject('checkGetConsoleOutput');
 				}
@@ -325,6 +327,18 @@ function check_oracle(o, type, main_pubkey){
 		});
 	})
 	.then(function(){
+		var mark = 'AWSAccessKeyId=';
+		var start;
+		var id;
+		var ids = [];
+		//"AWSAccessKeyId" should be the same to prove that the queries are made on behalf of AWS user "root".
+		//The can be a user with limited privileges for whom the API would report only partial information.
+		for (var url in [o.DI, o.DV, o.GU, o.GCO, o.DIA]){
+			start = url.search(mark)+mark.length;
+			id = url.slice(start, start + url.slice(start).search('&'));
+			ids.push(id);
+		}
+		assert(new Set(ids).size === 1);
 		console.log('finished');
 	})
 	.catch(function(err){
