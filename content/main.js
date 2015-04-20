@@ -22,6 +22,7 @@ var btoa = win.btoa;
 var atob = win.atob;
 var random_uid; //we get a new uid for each notarized page
 var reliable_sites = []; //read from content/pubkeys.txt
+var previous_session_start_time; // used to make sure user doesnt exceed rate limiting
 
 function openManager(){
 	var t = gBrowser.addTab("chrome://tlsnotary/content/manager.xhtml");
@@ -209,6 +210,7 @@ function startNotarizing(callback){
 		modulus = getModulus(cert_obj);
 		certsha256 = sha256(cert);
 		random_uid = Math.random().toString(36).slice(-10);
+		previous_session_start_time = new Date().getTime();
 		//loop prepare_pms 10 times until succeeds
 		return new Promise(function(resolve, reject) {
 			var tries = 0;
@@ -259,7 +261,13 @@ function startNotarizing(callback){
 		icon =  "chrome://tlsnotary/content/icon.png";
 		eachWindow(loadIntoWindow);
 		console.log('There was an error: ' + err);
-		alert('There was an error: ' + err);
+		if (err.startsWith('Timed out waiting for notary server to respond') &&
+			((new Date().getTime() - previous_session_start_time) < 60*1000) ){
+			alert ('You are signing pages way too fast. Please retry in 60 seconds.');
+		}
+		else {
+			alert('There was an error: ' + err);
+		}
 	});
 }
 

@@ -32,7 +32,7 @@ function openNextLink(){
 		var auditeeBrowser = gBrowser.addTab(url);
 		gBrowser.addProgressListener(tlsnLoadListener);
 		gBrowser.removeAllTabsBut(auditeeBrowser);
-	}, 1000);
+	}, 20*1000); //dont violate rate-limiting of 15 connections per minute.
     return;
     //remove tabs ~ every 5th run. We dont want tabs immediately closed so we could examine html while the test is running
     if ((Math.random()*5 << 0) === 4){
