@@ -299,13 +299,15 @@ function verifyEntry(basename, path){
 	    displayVerification(basename, 'tlsnotarygroup:oracle');
 	    }
 	else {
-	    var x = jsonToDOM([ "td", {}, "Not verified"+error],document,{});
+	    var x = jsonToDOM([ "td", {}, ""],document,{});
 	    var y = jsonToDOM(["img",
 			{height: '30',
 			 width: '30',
 			 src: 'chrome://tlsnotary/content/cross.png',
 			 }, "Not verified"], document,{});
+	    var z = jsonToDOM([ "text", {}, " Not verified: "+error],document,{});
 	    x.appendChild(y);
+	    x.appendChild(z);
 	    updateRow(basename,3,x);
 	    x = jsonToDOM([ "td", {}, "none"],document,{});
 	    y = jsonToDOM([ "td", {}, "none"],document,{});
@@ -316,16 +318,16 @@ function verifyEntry(basename, path){
 }
 
 function displayVerification(basename, notary_name){
-    var x = jsonToDOM([ "td", {}, "Valid"],document,{});
+    var x = jsonToDOM([ "td", {}, ""],document,{});
     var y = jsonToDOM(["img",
 	    {height: '30',
 	    width: '30',
 	    src: 'chrome://tlsnotary/content/check.png',
 	    }, "Valid"], document,{});
+    var z = jsonToDOM(["text",{}," valid"],document,{});
     x.appendChild(y);
+    x.appendChild(z)
     updateRow(basename,3,x);
-
-    //updateRow(basename,3,"<img src='chrome://tlsnotary/content/check.png' height='30' width='30' ></img> Valid");
     x = jsonToDOM([ "td", {}, notary_name],document,{});
     updateRow(basename,4,x); //TODO: pretty print pubkey?
     var html_link = getTLSNdir();
@@ -338,7 +340,7 @@ function displayVerification(basename, notary_name){
 	    {href: 'file://' + html_link.path,
 	    }, "view"], document,{});
     var q = jsonToDOM(["text",{}," , "],document,{});
-    var z = jsonToDOM(["a",
+    z = jsonToDOM(["a",
 	    {href: 'file://' + OS.Path.join(tlsn_dir,basename,"raw.txt"),
 	    }, "raw"], document,{});	    
     x.appendChild(y);
