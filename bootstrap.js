@@ -49,19 +49,22 @@ function loadIntoWindow(window) {
     mpu.setAttribute("id","tlsnmpu");
      let mi1 = doc.createElement("menuitem");
 	mi1.setAttribute("label", 'Notarize this page');
-	mi1.setAttribute("value","blah");
+	mi1.setAttribute("class","menuitem-with-favicon");
+	mi1.setAttribute("image", 'chrome://tlsnotary/content/icon.png');
 	mi1.addEventListener("command",main.notarize, false)
 	mpu.appendChild(mi1);
 	mpu.appendChild(sep1);
 	 let mi2 = doc.createElement("menuitem");
 	mi2.setAttribute("label", 'Verify tlsn file');
-	mi2.setAttribute("value","blah");
+	mi2.setAttribute("class","menuitem-with-favicon");
+	mi2.setAttribute("image", 'chrome://tlsnotary/content/verify.png');
 	mi2.addEventListener("command",main.verify, false)
 	mpu.appendChild(mi2);
 	mpu.appendChild(sep2);
 	 let mi3 = doc.createElement("menuitem");
 	mi3.setAttribute("label", 'Manage files');
-	mi3.setAttribute("value","blah");
+	mi3.setAttribute("class","menuitem-with-favicon");
+	mi3.setAttribute("image", 'chrome://tlsnotary/content/manage.png');
 	mi3.addEventListener("command",main.manage, false)
 	mpu.appendChild(mi3);
     
