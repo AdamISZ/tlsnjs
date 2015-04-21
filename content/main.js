@@ -23,6 +23,8 @@ var atob = win.atob;
 var random_uid; //we get a new uid for each notarized page
 var reliable_sites = []; //read from content/pubkeys.txt
 var previous_session_start_time; // used to make sure user doesnt exceed rate limiting
+var verbose = false; //trigger littering of the browser console
+
 
 function openManager(){
 	var t = gBrowser.addTab("chrome://tlsnotary/content/manager.xhtml");
@@ -42,10 +44,10 @@ function saveTLSNFile(existing_file){
 	 //write the file
 	 let promise = OS.File.copy(existing_file, fp.file.path);
 	 promise.then(function(){
-		   console.log("File write OK");
+		   log("File write OK");
 		   },
 		   function (e){
-		   console.log("Caught error writing file: "+e);
+		   log("Caught error writing file: "+e);
 		   }
 		   );
    }
@@ -69,6 +71,12 @@ function init(){
 			check_oracle(chosen_notary.sig, 'sig',  main_pubkey);
 		});
 	}
+	try{
+		if (Services.prefs.getBranch("extensions.tlsnotary.").getBoolPref('verbose') === true){
+			verbose = true;	
+		}
+	}
+	catch(e){};
 	import_reliable_sites();
 	startListening();
 }
@@ -201,7 +209,7 @@ function startNotarizing(callback){
 	var modulus;
 	var certsha256;
 	get_certificate(server).then(function(cert){
-		console.log('got certificate');
+		log('got certificate');
 		var cert_obj = getCertObject(cert);
 		if (! verifyCert(cert_obj)){
 			alert("This website cannot be audited by TLSNotary because it presented an untrusted certificate");
@@ -219,7 +227,7 @@ function startNotarizing(callback){
 				prepare_pms(modulus).then(function(args){
 					resolve(args);
 				}).catch(function(error){
-					console.log('caught error', error);
+					log('caught error', error);
 					if (error.startsWith('Timed out')){
 						reject(error);
 						return;
@@ -260,7 +268,7 @@ function startNotarizing(callback){
 	 	eachWindow(unloadFromWindow);
 		icon =  "chrome://tlsnotary/content/icon.png";
 		eachWindow(loadIntoWindow);
-		console.log('There was an error: ' + err);
+		log('There was an error: ' + err);
 		if (err.startsWith('Timed out waiting for notary server to respond') &&
 			((new Date().getTime() - previous_session_start_time) < 60*1000) ){
 			alert ('You are signing pages way too fast. Please retry in 60 seconds.');
@@ -477,8 +485,7 @@ function verify_tlsn_and_show_html(path, create){
 		});
 	}
 	}).catch( function(error){
-	//TODO handle errors
-	console.log("got error in vtsh: "+error);
+		log("got error in vtsh: "+error);
 	});
 }
 
@@ -542,7 +549,7 @@ function verifyCert(cert_obj){
 function dumpSecurityInfo(channel,urldata) {
     // Do we have a valid channel argument?
     if (! channel instanceof  Ci.nsIChannel) {
-        console.log("No channel available\n");
+        log("No channel available\n");
         return;
     }
     var secInfo = channel.securityInfo;
@@ -564,7 +571,7 @@ function dumpSecurityInfo(channel,urldata) {
 	dict_of_httpchannels[sanitized_url]  = channel.QueryInterface(Ci.nsIHttpChannel);
     }
     else {
-        console.log("\tNo security info available for this channel\n");
+        log("\tNo security info available for this channel\n");
     }
 }
 
@@ -588,7 +595,7 @@ var httpRequestBlocker = {
 		}
 		for(var i=0; i < block_urls.length; i++){
 			if (block_urls[i] === path){
-				console.log('found matching tab, ignoring request');
+				log('found matching tab, ignoring request');
 				httpChannel.cancel(Components.results.NS_BINDING_ABORTED);
 			}
 		}
@@ -628,7 +635,7 @@ var	myListener =
 
 function install_notification(t, commonName, raw_path){
 	t.addEventListener("load", function load(){
-		console.log('in load event');
+		log('in load event');
 		var box = gBrowser.getNotificationBox();
 		var priority = box.PRIORITY_INFO_HIGH;
 		var message = 'TLSNotary successfully verified that the webpage below was received from '+commonName;

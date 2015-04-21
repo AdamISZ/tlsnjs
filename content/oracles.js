@@ -259,7 +259,7 @@ function check_oracle(o, type, main_pubkey){
 			}
 		};
 		xhr.send();
-		console.log('sent');
+		log('sent');
 	})
 	.then(function(args){
 		return new Promise(function(resolve, reject) {
@@ -276,7 +276,7 @@ function check_oracle(o, type, main_pubkey){
 				}
 			};
 			xhr.send();
-			console.log('sent');
+			log('sent');
 		});
 	})
 	.then(function(args){
@@ -294,7 +294,7 @@ function check_oracle(o, type, main_pubkey){
 				}
 			};
 			xhr.send();
-			console.log('sent');
+			log('sent');
 		});
 	})
 	.then(function(launchTime){
@@ -321,7 +321,7 @@ function check_oracle(o, type, main_pubkey){
 				}
 			};
 			xhr.send();
-			console.log('sent');
+			log('sent');
 		});
 	})
 	.then(function(){
@@ -339,7 +339,7 @@ function check_oracle(o, type, main_pubkey){
 				}
 			};
 			xhr.send();
-			console.log('sent');
+			log('sent');
 		});
 	})
 	.then(function(){
@@ -355,10 +355,10 @@ function check_oracle(o, type, main_pubkey){
 			ids.push(id);
 		}
 		assert(new Set(ids).size === 1);
-		console.log('finished');
+		log('finished');
 	})
 	.catch(function(err){
-		console.log('error', err);
+		log('error', err);
 		oracles_intact = false;
 	});
 }

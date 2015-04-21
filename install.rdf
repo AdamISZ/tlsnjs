@@ -4,7 +4,7 @@
      xmlns:em="http://www.mozilla.org/2004/em-rdf#">
 
   <Description about="urn:mozilla:install-manifest">
-    <em:id>{2659c6ff-7053-4651-b632-789845882711}</em:id>
+    <em:id>tlsnotary@tlsnotary2</em:id>
     <em:version>1.0</em:version>
     <em:type>2</em:type>
     <em:bootstrap>true</em:bootstrap>

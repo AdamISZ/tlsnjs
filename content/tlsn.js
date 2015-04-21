@@ -105,12 +105,12 @@ Socket.prototype.connect = function(){
 		for(var i=0; i < view.byteLength; i++){
 			int_array.push(view.getUint8(i));
 		}
-		console.log('ondata got bytes:', view.byteLength);
+		log('ondata got bytes:', view.byteLength);
 		that.buffer = [].concat(that.buffer, int_array);
 	}
 	this.sckt.onopen = function() {
 		that.is_open = true;
-		console.log('onopen');
+		log('onopen');
 	}
 	
 	var that = this;
@@ -125,11 +125,11 @@ Socket.prototype.connect = function(){
 				return;
 			}
 			if (!that.is_open){
-				console.log('Another timeout');
+				log('Another timeout');
 				return;
 			}
 			clearInterval(timer);
-			console.log('promise resolved');
+			log('promise resolved');
 			resolve('ready');
 		};
 		timer = setInterval(check, 100);
@@ -152,7 +152,7 @@ Socket.prototype.recv = function(is_handshake){
 	}
 	var that = this;
 	return new Promise(function(resolve, reject) {
-		console.log('in recv promise');
+		log('in recv promise');
 		var timer;
 		var startTime = new Date().getTime();
 		var tmp_buf = [];
@@ -161,23 +161,23 @@ Socket.prototype.recv = function(is_handshake){
 			var now = new Date().getTime();
 			if (( (now - startTime) / 1000) >= 20){
 				clearInterval(timer);
-				console.log('rejecting');
+				log('rejecting');
 				reject('socket timed out');
 				return;
 			}
 			if (that.buffer.length === 0){
-				console.log('Another timeout in recv');
+				log('Another timeout in recv');
 				return;
 			}
 			tmp_buf = [].concat(tmp_buf, that.buffer);
 			that.buffer = [];
 			if(! check_complete_records(tmp_buf)){
-				console.log("check_complete_records failed");
+				log("check_complete_records failed");
 				return;
 			}
 			//else
 			clearInterval(timer);
-			console.log('promise resolved');
+			log('promise resolved');
 			resolve(tmp_buf);
 		};
 		timer = setInterval(check_recv, 100);
@@ -219,9 +219,9 @@ Socket_proxy.prototype.connect = function(){
 		return new Promise(function(resolve, reject) {	
 			var req = that.req;
 			req.open("HEAD", "http://127.0.0.1:"+that.socketport+"/connect?"+that.name+"&"+that.port, true);
-			console.log('sending connect');
+			log('sending connect');
 			req.onload = function(){
-				console.log('connect onload');
+				log('connect onload');
 				req.abort();
 				that.busy = false;
 				resolve('success');
@@ -243,14 +243,14 @@ Socket_proxy.prototype.send = function(data_in){
 		var req = that.req;
 		//sending a comma separated array of numbers because we dont want extra base64 code in extension
 		req.open("HEAD", "http://127.0.0.1:"+that.socketport+"/send?"+data_in.toString(), true);
-		console.log('sending send');
+		log('sending send');
 		req.onabort = function(){
-			console.log('send abort');
+			log('send abort');
 			reject('rejected');
 		};
 		req.onload = function(){
 			req.abort();
-			console.log('send onload');
+			log('send onload');
 			that.busy = false;
 			resolve('success');
 		};
@@ -278,11 +278,11 @@ Socket_proxy.prototype.recv = function(sckt, is_handshake, callbacks, previous_r
 		var req = that.req;
 		req.open("HEAD", "http://127.0.0.1:"+that.socketport+"/recv", true);
 		req.onerror = function(){
-			console.log('xhr error');
+			log('xhr error');
 			reject('xhr error');
 		};
 		req.onload = function(){
-			console.log('got reply for recv');
+			log('got reply for recv');
 			that.busy = false;
 			var data = req.getResponseHeader("data");
 			req.abort();
@@ -291,10 +291,10 @@ Socket_proxy.prototype.recv = function(sckt, is_handshake, callbacks, previous_r
 			for (var i=0; i < int_ar.length; i++){
 				reply = [].concat(reply, parseInt(int_ar[i]));
 			}
-			console.log('in recv onload with bytes:' + reply.length);
+			log('in recv onload with bytes:' + reply.length);
 			if (is_handshake){
 				if(! check_complete_records(reply)){
-					console.log("check_complete_records failed");
+					log("check_complete_records failed");
 					that.recv.call(that, sckt, is_handshake, callbacks, reply);
 					return;
 				}
@@ -302,7 +302,7 @@ Socket_proxy.prototype.recv = function(sckt, is_handshake, callbacks, previous_r
 			resolve(reply);
 		};
 		//give the backend some time
-		console.log('sending recv');
+		log('sending recv');
 		req.send();
 	});
 };
@@ -338,26 +338,25 @@ function send_and_recv(command, data, expected_response){
 			}
 			var b64data = req.getResponseHeader("Data");
 			var data = b64decode(b64data);
-			console.log('got from oracle', response);
+			log('got from oracle', response);
 			resolve(data);
 		};
-		console.log('sent to oracle', command);
+		log('sent to oracle', command);
 		req.send();
 	});
 }
 
 
-var pms_session;
-var rsapms2;
 function prepare_pms(modulus, tryno){
 	isdefined(modulus);
 	if (typeof(tryno) === "undefined"){
 		tryno = 1;
 	}
+	var rsapms2;
 	var random_rs = reliable_sites[Math.random()*(reliable_sites.length) << 0];
 	var rs_choice = random_rs.name;
-	console.log('random reliable site', rs_choice);
-	pms_session = new TLSNClientSession();
+	log('random reliable site', rs_choice);
+	var pms_session = new TLSNClientSession();
 	pms_session.__init__({'server':rs_choice, 'ccs':53, 'tlsver':global_tlsver});
 	pms_session.server_modulus = random_rs.modulus;
 	pms_session.sckt = new Socket(pms_session.server_name, pms_session.ssl_port);
@@ -387,7 +386,7 @@ function prepare_pms(modulus, tryno){
 		var record_to_find = new TLSRecord();
 		record_to_find.__init__(chcis, [0x01], global_tlsver);
 		if (response.toString().indexOf(record_to_find.serialized.toString()) < 0){
-			console.log("PMS trial failed, retrying. ("+response.toString()+")");
+			log("PMS trial failed, retrying. ("+response.toString()+")");
 			throw("PMS trial failed");
 		}
 		return( [pms_session.auditee_secret, pms_session.auditee_padding_secret, rsapms2] );	
@@ -436,7 +435,7 @@ function negotiate_crippled_secrets(tlsn_session){
 
 
 function decrypt_html(tlsn_session){
-	console.log("will decrypt cs:", tlsn_session.server_connection_state.cipher_suite);
+	log("will decrypt cs:", tlsn_session.server_connection_state.cipher_suite);
 	var rv = tlsn_session.process_server_app_data_records();
 	var plaintext = rv[0];
 	var bad_mac = rv[1];
@@ -446,7 +445,7 @@ function decrypt_html(tlsn_session){
 	var plaintext_str = ba2str(plaintext);
 	var plaintext_dechunked = dechunk_http(plaintext_str);
 	var plaintext_gunzipped = gunzip_http(plaintext_dechunked);
-	console.log('returning plaintext of length ' + plaintext_gunzipped.length);
+	log('returning plaintext of length ' + plaintext_gunzipped.length);
 	return plaintext_gunzipped;
 }
 
@@ -491,7 +490,7 @@ function start_audit(modulus, certhash, name, headers, ee_secret, ee_pad_secret,
 	})
 	.then(function(handshake_objects){
 		tlsn_session.process_server_hello(handshake_objects);
-		console.log("negotiate_crippled_secrets");
+		log("negotiate_crippled_secrets");
 		return negotiate_crippled_secrets(tlsn_session);
 	})
 	.then(function(){
@@ -502,7 +501,7 @@ function start_audit(modulus, certhash, name, headers, ee_secret, ee_pad_secret,
 		}
 		var headers_ba = str2ba(headers);
 		tlsn_session.build_request(headers_ba);
-		console.log("sent request");
+		log("sent request");
 		return tlsn_session.sckt.recv(false); //#not handshake flag means we wait on timeout
 	})
 	.then(function(response){
@@ -521,11 +520,11 @@ function start_audit(modulus, certhash, name, headers, ee_secret, ee_pad_secret,
 		signature = response.slice(24);
 		var modulus = chosen_notary.sig.modulus;
 		var signed_data = sha256([].concat(commit_hash, pms2, tlsn_session.server_modulus));
-		console.log('beginning sig verification');
+		log('beginning sig verification');
 		if (!verify_commithash_signature(signed_data, signature, modulus)){
 			throw('Failed to verify notary server signature');
 		}
-		console.log('finished sig verification');
+		log('finished sig verification');
 		tlsn_session.auditor_secret = pms2.slice(0, tlsn_session.n_auditor_entropy);
 		tlsn_session.set_auditor_secret();
 		tlsn_session.set_master_secret_half(); //#without arguments sets the whole MS
@@ -745,7 +744,7 @@ TLSHandshake.prototype.__init__ = function(serialized, handshake_type){
 		}
 		this.discarded = this.serialized.slice(4+this.handshake_record_length);
 		/*if (this.discarded){
-			console.log ('Info: got a discarded data when constructing',
+			log ('Info: got a discarded data when constructing',
 				   'a handshake message of type: ', this.handshake_type.toString(),
 				   ' and discarded length was: ', this.discarded.length);
 	   }
@@ -1339,9 +1338,9 @@ TLSNClientSession.prototype.get_server_hello = function(){
 	var sckt = this.sckt;
 	return new Promise(function(resolve, reject) {
 		var loop = function(resolve, reject){      
-			console.log('get_server_hello next iteration');
+			log('get_server_hello next iteration');
 			sckt.recv(true).then(function(rspns){
-				console.log('returned from sckt.recv with length', rspns.length);
+				log('returned from sckt.recv with length', rspns.length);
 				var rv = tls_record_decoder(rspns);
 				var records = rv[0];
 				var remaining = rv[1];
@@ -1357,7 +1356,7 @@ TLSNClientSession.prototype.get_server_hello = function(){
 					handshake_objects = [].concat(handshake_objects, decoded);
 				}
 				if (handshake_objects.length < 3){
-					console.log('get_server_hello handshake_objects.length < 3');
+					log('get_server_hello handshake_objects.length < 3');
 					loop(resolve, reject);
 					return;
 				}
@@ -1518,16 +1517,16 @@ TLSNClientSession.prototype.get_server_finished = function(){
 	var sckt = this.sckt;
 	return new Promise(function(resolve, reject) {
 		var loop = function(resolve, reject){      
-			console.log('get_server_finished next iteration');
+			log('get_server_finished next iteration');
 			sckt.recv(true).then(function(rspns){
-				console.log('returned from sckt.recv');
+				log('returned from sckt.recv');
 				var rv = tls_record_decoder(rspns);
 				var x = rv[0];
 				var remaining = rv[1];
 				assert(remaining.length === 0, "Server sent spurious non-TLS response");
 				records = [].concat(records, x);
 				if (records.length < 2){
-					console.log('get_server_finished records.length < 2');
+					log('get_server_finished records.length < 2');
 					loop(resolve, reject);
 					return;
 				}

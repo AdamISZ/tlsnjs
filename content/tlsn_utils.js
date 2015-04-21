@@ -173,8 +173,10 @@ function isdefined(obj){
 	assert(typeof(obj) !== "undefined", "obj was undefined");
 }
 
-function print(stuff){
-	console.log(stuff);
+function log(){
+	if (verbose){
+		console.log( Array.prototype.slice.call(arguments) );
+	}
 }
 	
 	
@@ -238,7 +240,7 @@ function gunzip_http(http_data){
         throw('Please set gzip_disabled = 1 in tlsnotary.ini and rerun the audit');
 	}
 	if (http_header.search(/content-encoding:\s*gzip/i) === -1){
-		console.log('nothing to gunzip');
+		log('nothing to gunzip');
         return http_data; //#nothing to gunzip
 	}
     var http_body = http_data.slice(http_header.length);
@@ -247,16 +249,8 @@ function gunzip_http(http_data){
 		//HTTP 304 Not Modified has no body
 		return ungzipped;
 	}
-    console.log('before pako');
-    try{
-		var inflated = pako.inflate(http_body);
-	} catch(e){
-		console.log('exc in pako');
-		alert('exc in pako');
-	}
-    console.log('after pako');
+	var inflated = pako.inflate(http_body);
     ungzipped += ba2str(inflated);
-    console.log('before return');
     return ungzipped;
 }
 
