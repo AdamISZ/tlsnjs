@@ -115,12 +115,24 @@ function importTLSNFile(){
     loadManager();
 }
 
+
 function doRename(t){
+    var isValid=(function(){
+    var rg1=/^[^\\/:\*\?"<>\|]+$/; // forbidden characters \ / : * ? " < > |
+    var rg2=/^\./; // cannot start with dot (.)
+    var rg3=/^(nul|prn|con|lpt[0-9]|com[0-9])(\.|$)/i; // forbidden file names
+    return function isValid(fname){
+      return rg1.test(fname)&&!rg2.test(fname)&&!rg3.test(fname);
+    }
+    })();
     var new_name = window.prompt("Enter a new name for the notarization file:");
+    if(!(isValid(new_name))){
+	alert("Invalid filename");
+	return;
+    }
     if (!new_name.endsWith(".tlsn")){
 	new_name = new_name + ".tlsn";
     }
-    //console.log("t.id is: "+t.id);
     basename = OS.Path.basename(t.id);
     original_path = t.id;
     basedir = OS.Path.dirname(t.id);
@@ -325,11 +337,13 @@ function displayVerification(basename, notary_name){
     y = jsonToDOM(["a",
 	    {href: 'file://' + html_link.path,
 	    }, "view"], document,{});
+    var q = jsonToDOM(["text",{}," , "],document,{});
     var z = jsonToDOM(["a",
 	    {href: 'file://' + OS.Path.join(tlsn_dir,basename,"raw.txt"),
 	    }, "raw"], document,{});	    
     x.appendChild(y);
-    x.appendChild(z)
+    x.appendChild(q);
+    x.appendChild(z);
     updateRow(basename,5,x);
 }
 
