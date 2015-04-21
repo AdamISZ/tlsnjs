@@ -78,33 +78,17 @@ function tableRefresher(){
 	setTimeout(tableRefresher,500);
 	return;
     }
-    console.log("starting table update");
-    for (var d in tdict){
-	console.log("working with tdict entry: "+tdict[d][0].name);
-    }
-    for (var d in tdict_prev){
-	console.log("working with tdict_prev entry: "+tdict_prev[d][0].name);
-    }
     //table is ready to be drawn
     for (var d in tdict){
-	//console.log("working with hash: "+tdict[d][1]);
 	if (!(d in tdict_prev)){
 	    //entirely new entry
-	    console.log("Entirely new entry");
 	    addNewRow(tdict[d][0],d,tdict[d][2],'none',"none","none");
 	    verifyEntry(d, tdict[d][0].path); //populates validation fields
 	}
 	else if (tdict[d][1].toString() != tdict_prev[d][1].toString()){
 	    //file is modified; reverify
-	    console.log("File was modified");
-	    console.log("The old one was: "+tdict_prev[d][1]);
-	    console.log("The new one was: "+tdict[d][1]);
 	    verifyEntry(d, tdict[d][0].path);
 	}
-	else {
-	console.log("File was unchanged");
-	}
-	//else: file is unchanged; nothing to do
     }
     tloaded = false; //wait for next change
     setTimeout(tableRefresher, 500);
@@ -234,7 +218,6 @@ function loadManager() {
 	    if (entry2.path.endsWith(".tlsn")){
 		OS.File.read(entry2.path).then(function (read_data){
 		    file_hash = sha256(read_data);
-		    //console.log("Git hash: "+ file_hash);
 		    dirname = OS.Path.basename(OS.Path.dirname(entry2.path));
 		    var row;
 		    if (!(dirname in tdict_prev)){
@@ -277,7 +260,6 @@ function updateRow(basename, col, x){
 }
 
 function verifyEntry(basename, path){
-	//console.log("About to read a file with path: "+path);
 	OS.File.read(path).then( function(imported_data){
 	verify_tlsn(imported_data);
 	}).then(function (){
