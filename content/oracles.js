@@ -3,11 +3,12 @@ var snapshotID_main = 'snap-cdd399f8';
 var snapshotID_sig = 'snap-00083b35';
 var imageID_main = 'ami-5e39040c';
 var imageID_sig = 'ami-88724fda';
-var oracles_intact = true; //can be set to false only on first run when oracle check is performed
+var oracles_intact = false; //must be explicitely set to true
 
 
 var local1 =
-{'main':{
+{'name':'local1',
+'main':{
 	"IP":"localhost",
 	"port":"10011"
 },
@@ -18,7 +19,8 @@ var local1 =
 
 
 var waxwing =
-{'main':{
+{'name':'waxwing',
+'main':{
 	"IP":"109.169.23.122",
 	"port":"8080"
 },
@@ -29,7 +31,8 @@ var waxwing =
 
 
 var oracle = 
-{'main': {
+{'name':'oracle1',
+'main': {
 	"IP":"52.74.29.34",
 	"port":"10011",
 	'DI':'https://ec2.ap-southeast-1.amazonaws.com/?AWSAccessKeyId=AKIAIHF5FKKL7SKLLJNQ&Action=DescribeInstances&Expires=2018-01-01&InstanceId=i-e2f28d2f&SignatureMethod=HmacSHA256&SignatureVersion=2&Version=2014-10-01&Signature=u6rcenB%2Feng0c%2FMknOEJu7nbb8s0qHd84AJmF1pLTCc%3D',
@@ -50,8 +53,9 @@ var oracle =
 	'IP': '52.74.155.127'
 }
 }
-
-var chosen_notary = oracle;
+//there can be potentially multiple oracles to choose from
+var oracles = [];
+oracles.push(oracle);
 
 
 //assuming both events happened on the same day, get the time
@@ -355,11 +359,7 @@ function check_oracle(o, type, main_pubkey){
 			ids.push(id);
 		}
 		assert(new Set(ids).size === 1);
-		log('finished');
-	})
-	.catch(function(err){
-		log('error', err);
-		oracles_intact = false;
+		log('oracle verification successfully finished');		
 	});
 }
 

@@ -20,10 +20,12 @@ var clearInterval = win.clearInterval;
 var alert = win.alert;
 var btoa = win.btoa;
 var atob = win.atob;
+var JSON = win.JSON;
 var random_uid; //we get a new uid for each notarized page
 var reliable_sites = []; //read from content/pubkeys.txt
 var previous_session_start_time; // used to make sure user doesnt exceed rate limiting
 var verbose = false; //trigger littering of the browser console
+var chosen_notary;
 
 
 function openManager(){
@@ -39,17 +41,17 @@ function saveTLSNFile(existing_file){
 	fp.init(window, "Save your notification file", nsIFilePicker.modeSave);
 	//don't set the display directory; leave as default
 	var rv = fp.show();
-   if (rv == nsIFilePicker.returnOK || rv == nsIFilePicker.returnReplace) {
-	 var path = fp.file.path;
-	 //write the file
-	 let promise = OS.File.copy(existing_file, fp.file.path);
-	 promise.then(function(){
-		   log("File write OK");
-		   },
-		   function (e){
-		   log("Caught error writing file: "+e);
-		   }
-		   );
+	if (rv == nsIFilePicker.returnOK || rv == nsIFilePicker.returnReplace) {
+		var path = fp.file.path;
+		//write the file
+		let promise = OS.File.copy(existing_file, fp.file.path);
+		promise.then(function(){
+			log("File write OK");
+		},
+		function (e){
+			log("Caught error writing file: "+e);
+		}
+		);
    }
 }
 
@@ -63,20 +65,45 @@ function init(){
 		setTimeout(init, 100);
 		return;
 	}
-	if (after_install){
+	
+	var branch = Services.prefs.getBranch("extensions.tlsnotary.");
+	if (branch.prefHasUserValue('verbose')){
+		if (branch.getBoolPref('verbose') === true){
+			verbose = true;	
+		}
+	}
+	
+	chosen_notary = oracles[Math.random()*(oracles.length) << 0];
+	var oracle_hash = ba2hex(sha256(JSON.stringify(chosen_notary)));
+	branch = Services.prefs.getBranch("extensions.tlsnotary.verifiedOracles.");
+	var was_oracle_verified = false;
+	if (branch.prefHasUserValue(oracle_hash)){
+		if (branch.getBoolPref(oracle_hash) === true){
+			was_oracle_verified = true;	
+		}
+	}
+	if (! was_oracle_verified){
 		//async check oracles and if the check fails, sets a global var
+		//which prevents notarization session from running
+		log('oracle not verified');
 		var main_pubkey = {pubkey:''};
 		check_oracle(chosen_notary.main, 'main', main_pubkey).
 		then(function(){
 			check_oracle(chosen_notary.sig, 'sig',  main_pubkey);
+		}).
+		then(function success(){
+			branch.setBoolPref(oracle_hash, true);
+			oracles_intact = true;
+		}).
+		catch(function(err){
+			log('caught error', err);
+			//query for a new oracle
+			//TODO fetch backup oracles list
 		});
 	}
-	try{
-		if (Services.prefs.getBranch("extensions.tlsnotary.").getBoolPref('verbose') === true){
-			verbose = true;	
-		}
+	else {
+		oracles_intact = true;
 	}
-	catch(e){};
 	import_reliable_sites();
 	startListening();
 }
@@ -157,6 +184,7 @@ function startListening(){
 function startNotarizing(callback){
 	if (! oracles_intact){
 		alert('Cannot notarize because something is wrong with TLSNotary server. Please try again later');
+		return;
 	}
     var audited_browser = gBrowser.selectedBrowser;
     var tab_url_full = audited_browser.contentWindow.location.href;

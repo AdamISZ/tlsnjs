@@ -2,7 +2,6 @@
 var bootstrapjs_exception;
 var thisaddon;
 var jsloaded = false;
-var after_install = false;
 try {
 
 const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
@@ -152,9 +151,8 @@ function loadjs(){
   jsloaded = true;
   var addon = thisaddon;
   include(addon, "button.js");
-  include(addon, "oracles.js");
   include(addon, "tlsn_utils.js");
-  include(addon, "main.js");
+  include(addon, "oracles.js");
   include(addon, "CryptoJS/components/core.js");
   include(addon, "CryptoJS/components/md5.js");
   include(addon, "CryptoJS/components/evpkdf.js");
@@ -165,6 +163,7 @@ function loadjs(){
   include(addon, "CryptoJS/components/cipher-core.js");
   include(addon, "CryptoJS/components/aes.js");
   include(addon, "CryptoJS/components/pad-nopadding.js");
+  include(addon, "main.js");
   include(addon, "jsbn.js");
   include(addon, "jsbn2.js");
   include(addon, "pako.js");
@@ -177,9 +176,7 @@ function shutdown(data, reason) {
   Services.ww.unregisterNotification(windowWatcher);
   eachWindow(unloadFromWindow);
 }
-function install(data,reason) {
-	after_install = true;
-}
+function install(data,reason) {}
 function uninstall(data,reason) {}
 
 } catch (e){
