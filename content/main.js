@@ -6,7 +6,6 @@ Cu.import('resource://gre/modules/Services.jsm');
 Cu.import("resource://gre/modules/osfile.jsm")
 var dict_of_status = {};
 var dict_of_httpchannels = {};
-var tlsn_files = [];
 var win = Cc['@mozilla.org/appshell/window-mediator;1']
 	.getService(Ci.nsIWindowMediator).getMostRecentWindow('navigator:browser');
 var gBrowser = win.gBrowser;
@@ -25,10 +24,17 @@ var reliable_sites = []; //read from content/pubkeys.txt
 
 function openManager(){
 	var t = gBrowser.addTab("chrome://tlsnotary/content/manager.xhtml");
-	gBrowser.selectedTab = t;
-	
+	gBrowser.selectedTab = t;	
 }
 
+function changeNotary(){
+	if (Services.prefs.getBranch("extensions.tlsnotary.server.").getCharPref("host") != "oracle"){
+		chosen_notary = waxwing;
+	}
+	else {
+		chosen_notary = oracle;
+	}
+}
 
 function saveTLSNFile(existing_file){
     var nsIFilePicker = Ci.nsIFilePicker;
@@ -60,7 +66,7 @@ function init(){
 		setTimeout(init, 100);
 		return;
 	}
-	if (after_install){
+	if (after_install && !(chosen_notary == waxwing)){
 		//async check oracles and if the check fails, sets a global var
 		var main_pubkey = {pubkey:''};
 		check_oracle(chosen_notary.main, 'main', main_pubkey).
@@ -68,6 +74,15 @@ function init(){
 			check_oracle(chosen_notary.sig, 'sig',  main_pubkey);
 		});
 	}
+	//set server.host to the default if it's not set at all
+	server_setting =
+	Services.prefs.getBranch("extensions.tlsnotary.server.").getCharPref("host");
+	console.log("Server setting was: "+server_setting);
+	if (server_setting == ""){
+		console.log("setting the server: ");
+		Services.prefs.getBranch("extensions.tlsnotary.server.").setCharPref("host","oracle");
+	}
+		
 	import_reliable_sites();
 	startListening();
 }
@@ -409,10 +424,30 @@ var data = ua2ba(imported_data);
 	if (sha256(response).toString() !== commit_hash.toString()){
 		throw ('commit hash mismatch');
 	}
-	//verify sig
+	//verify sig; catch signatures to the wrong modulus in
+	//case of being called from file manager (see manager.js);
+	//in live audit it is still counted as a failure (exception)
 	var signed_data = sha256([].concat(commit_hash, pms2, modulus));
 	if (!verify_commithash_signature(signed_data, sig, chosen_notary.sig.modulus)){
-		throw('notary signature verification failed');
+		if (chosen_notary == oracle){
+			if (!verify_commithash_signature(signed_data, sig, waxwing.sig.modulus)){
+				throw ('notary signature verification failed');
+			}
+			else {
+				throw ('notary signature from waxwing');
+			}
+		}
+		else if (chosen_notary == waxwing){
+			if (!verify_commithash_signature(signed_data, sig, oracle.sig.modulus)){
+				throw ('notary signature verification failed');
+			}
+			else {
+				throw ('notary signature from oracle');
+			}
+		}
+		else {
+			throw ('unrecognized notary');
+		}
 	}
 	//decrypt html and check MAC
 	var s = new TLSNClientSession();
@@ -435,7 +470,7 @@ var data = ua2ba(imported_data);
 	s.server_connection_state.seq_no += 1;
 	s.server_connection_state.IV = s.IV_after_finished;
 	html_with_headers = decrypt_html(s);
-	return [html_with_headers,commonName,imported_data];;
+	return [html_with_headers,commonName,imported_data];
 }
 
 function verify_tlsn_and_show_html(path, create){
@@ -469,8 +504,8 @@ function verify_tlsn_and_show_html(path, create){
 		});
 	}
 	}).catch( function(error){
-	//TODO handle errors
 	console.log("got error in vtsh: "+error);
+	alert ("Failure during verification: "+error);
 	});
 }
 

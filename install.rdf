@@ -25,5 +25,7 @@
     <em:description>TLSNotary - prove an HTTPS page was in your browser</em:description>
     <em:creator>TLSNotary Group</em:creator>
     <em:homepageURL>https://tlsnotary.org</em:homepageURL>
+    <em:optionsURL>chrome://tlsnotary/content/settings.xul</em:optionsURL>
+    <em:optionsType>2</em:optionsType>
   </Description>      
 </RDF>
