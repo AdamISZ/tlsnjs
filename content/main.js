@@ -34,7 +34,6 @@ function openManager(){
 	
 }
 
-
 function saveTLSNFile(existing_file){
     var nsIFilePicker = Ci.nsIFilePicker;
 	var fp = Cc["@mozilla.org/filepicker;1"].createInstance(nsIFilePicker);
@@ -73,36 +72,46 @@ function init(){
 		}
 	}
 	
-	chosen_notary = oracles[Math.random()*(oracles.length) << 0];
-	var oracle_hash = ba2hex(sha256(JSON.stringify(chosen_notary)));
-	branch = Services.prefs.getBranch("extensions.tlsnotary.verifiedOracles.");
-	var was_oracle_verified = false;
-	if (branch.prefHasUserValue(oracle_hash)){
-		if (branch.getBoolPref(oracle_hash) === true){
-			was_oracle_verified = true;	
-		}
-	}
-	if (! was_oracle_verified){
-		//async check oracles and if the check fails, sets a global var
-		//which prevents notarization session from running
-		log('oracle not verified');
-		var main_pubkey = {pubkey:''};
-		check_oracle(chosen_notary.main, 'main', main_pubkey).
-		then(function(){
-			check_oracle(chosen_notary.sig, 'sig',  main_pubkey);
-		}).
-		then(function success(){
-			branch.setBoolPref(oracle_hash, true);
-			oracles_intact = true;
-		}).
-		catch(function(err){
-			log('caught error', err);
-			//query for a new oracle
-			//TODO fetch backup oracles list
-		});
+	//check if user wants to use a fallback
+	branch = Services.prefs.getBranch("extensions.tlsnotary.");
+	if (branch.prefHasUserValue('fallback')){
+		oracles_intact = true;
+		//TODO this should be configurable, e.g. choice from list
+		//or set in prefs
+		chosen_notary = pagesigner_servers[1];
 	}
 	else {
-		oracles_intact = true;
+		chosen_notary = oracles[Math.random()*(oracles.length) << 0];
+		var oracle_hash = ba2hex(sha256(JSON.stringify(chosen_notary)));
+		branch = Services.prefs.getBranch("extensions.tlsnotary.verifiedOracles.");
+		var was_oracle_verified = false;
+		if (branch.prefHasUserValue(oracle_hash)){
+			if (branch.getBoolPref(oracle_hash) === true){
+				was_oracle_verified = true;	
+			}
+		}
+		if (! was_oracle_verified){
+			//async check oracles and if the check fails, sets a global var
+			//which prevents notarization session from running
+			log('oracle not verified');
+			var main_pubkey = {pubkey:''};
+			check_oracle(chosen_notary.main, 'main', main_pubkey).
+			then(function(){
+				check_oracle(chosen_notary.sig, 'sig',  main_pubkey);
+			}).
+			then(function success(){
+				branch.setBoolPref(oracle_hash, true);
+				oracles_intact = true;
+			}).
+			catch(function(err){
+				log('caught error', err);
+				//query for a new oracle
+				//TODO fetch backup oracles list
+			});
+		}
+		else {
+			oracles_intact = true;
+		}
 	}
 	import_reliable_sites();
 	startListening();
@@ -348,7 +357,6 @@ function create_final_html(html_with_headers, server_name, is_imported){
 	});
 }
 
-
 function save_session_and_open_html(args, server){
 	assert (args.length === 18, "wrong args length");
 	var cipher_suite = args[0];
@@ -414,7 +422,7 @@ function save_session_and_open_html(args, server){
 	});
 }
 
-function verify_tlsn(imported_data){
+function verify_tlsn(imported_data, from_past){
 var data = ua2ba(imported_data);
 	var offset = 0;
 	if (ba2str(data.slice(offset, offset+=29)) !== "tlsnotary notarization file\n\n"){
@@ -441,7 +449,6 @@ var data = ua2ba(imported_data);
 	var commit_hash = data.slice(offset, offset+=32);
 	var notary_pubkey = data.slice(offset, offset+=sig_len);
 	assert (data.length === offset, 'invalid tlsn length');
-	
 	var cert_obj = getCertObject(cert);
 	var commonName = cert_obj.commonName;
 	//verify cert
@@ -455,9 +462,13 @@ var data = ua2ba(imported_data);
 	}
 	//verify sig
 	var signed_data = sha256([].concat(commit_hash, pms2, modulus));
-	if (!verify_commithash_signature(signed_data, sig, chosen_notary.sig.modulus)){
-		throw('notary signature verification failed');
+	var signing_key;
+	if (from_past){signing_key = notary_pubkey;}
+	else {signing_key = chosen_notary.sig.modulus;}
+	if (!verify_commithash_signature(signed_data, sig, signing_key)){
+		throw ('notary signature verification failed');
 	}
+	
 	//decrypt html and check MAC
 	var s = new TLSNClientSession();
 	s.__init__();
@@ -479,7 +490,7 @@ var data = ua2ba(imported_data);
 	s.server_connection_state.seq_no += 1;
 	s.server_connection_state.IV = s.IV_after_finished;
 	html_with_headers = decrypt_html(s);
-	return [html_with_headers,commonName,imported_data];;
+	return [html_with_headers,commonName,imported_data, notary_pubkey];
 }
 
 function verify_tlsn_and_show_html(path, create){
