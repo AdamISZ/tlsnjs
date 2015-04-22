@@ -208,9 +208,9 @@ function updateRow(basename, col, x){
 
 function verifyEntry(basename, path){
 	OS.File.read(path).then( function(imported_data){
-	    verify_tlsn(imported_data);
-	}).then(function (){
-	    displayVerification(basename, chosen_notary.name);
+	    return verify_tlsn(imported_data, true);
+	}).then(function (a){
+	    displayVerification(basename, a[3]);
 	}).catch( function(error){
 	    log("Error in verifyEntry: "+error);
 	    var x = jsonToDOM([ "td", {}, ""],document,{});
@@ -231,7 +231,17 @@ function verifyEntry(basename, path){
 	});	
 }
 
-function displayVerification(basename, notary_name){
+function displayVerification(basename, pubkey){
+    //find the right notary object based on provided pubkey
+    var used_notary = null;
+    for (var i=0;i<pagesigner_servers.length;i++){
+	if (pagesigner_servers[i].sig.modulus.toString() == pubkey.toString()){
+	    used_notary = pagesigner_servers[i];
+	}
+    }
+    if (!(used_notary)){ //can happen if the signing notary is not in our trusted list
+	throw ("unknown notary");
+    }
     var x = jsonToDOM([ "td", {}, ""],document,{});
     var y = jsonToDOM(["img",
 	    {height: '30',
@@ -242,7 +252,7 @@ function displayVerification(basename, notary_name){
     x.appendChild(y);
     x.appendChild(z)
     updateRow(basename,3,x);
-    x = jsonToDOM([ "td", {}, notary_name],document,{});
+    x = jsonToDOM([ "td", {}, used_notary.name],document,{});
     updateRow(basename,4,x); //TODO: pretty print pubkey?
     var html_link = getTLSNdir();
     html_link.append(basename);
