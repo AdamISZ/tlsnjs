@@ -185,10 +185,11 @@ function checkGetConsoleOutput(xmlDoc, instanceId, launchTime, type, main_pubkey
 	var b64data = xmlDoc.getElementsByTagName('output')[0].textContent;
 	var logstr = ba2str(b64decode(b64data));
 	//now other string starting with xvd except for xvda
+	console.log("Before first assert, logstr is: "+logstr);
 	assert(logstr.search(/xvd[^a]/g) === -1);
-	var mainmark = 'PageSigner main server pubkey which is embedded into the signing server:';
-	var sigmark = 'PageSigner siging server pubkey:';
-	var sigimportedmark = 'PageSigner imported main server pubkey:'
+	var mainmark = 'TLSNotary main server pubkey which is embedded into the signing server:';
+	var sigmark = 'TLSNotary siging server pubkey:';
+	var sigimportedmark = 'TLSNotary imported main server pubkey:'
 	var pkstartmark = '-----BEGIN PUBLIC KEY-----';
 	var pkendmark = '-----END PUBLIC KEY-----';
 	
