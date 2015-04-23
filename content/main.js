@@ -6,7 +6,6 @@ Cu.import('resource://gre/modules/Services.jsm');
 Cu.import("resource://gre/modules/osfile.jsm")
 var dict_of_status = {};
 var dict_of_httpchannels = {};
-var tlsn_files = [];
 var win = Cc['@mozilla.org/appshell/window-mediator;1']
 	.getService(Ci.nsIWindowMediator).getMostRecentWindow('navigator:browser');
 var gBrowser = win.gBrowser;
@@ -29,12 +28,12 @@ var chosen_notary;
 
 
 function openManager(){
-	var t = gBrowser.addTab("chrome://tlsnotary/content/manager.xhtml");
+	var t = gBrowser.addTab("chrome://pagesigner/content/manager.xhtml");
 	gBrowser.selectedTab = t;
 	
 }
 
-function saveTLSNFile(existing_file){
+function savePGSGFile(existing_file){
     var nsIFilePicker = Ci.nsIFilePicker;
 	var fp = Cc["@mozilla.org/filepicker;1"].createInstance(nsIFilePicker);
 	fp.init(window, "Save your notification file", nsIFilePicker.modeSave);
@@ -65,7 +64,7 @@ function init(){
 		return;
 	}
 	
-	var branch = Services.prefs.getBranch("extensions.tlsnotary.");
+	var branch = Services.prefs.getBranch("extensions.pagesigner.");
 	if (branch.prefHasUserValue('verbose')){
 		if (branch.getBoolPref('verbose') === true){
 			verbose = true;	
@@ -73,7 +72,7 @@ function init(){
 	}
 	
 	//check if user wants to use a fallback
-	branch = Services.prefs.getBranch("extensions.tlsnotary.");
+	branch = Services.prefs.getBranch("extensions.pagesigner.");
 	if (branch.prefHasUserValue('fallback')){
 		oracles_intact = true;
 		//TODO this should be configurable, e.g. choice from list
@@ -83,7 +82,7 @@ function init(){
 	else {
 		chosen_notary = oracles[Math.random()*(oracles.length) << 0];
 		var oracle_hash = ba2hex(sha256(JSON.stringify(chosen_notary)));
-		branch = Services.prefs.getBranch("extensions.tlsnotary.verifiedOracles.");
+		branch = Services.prefs.getBranch("extensions.pagesigner.verifiedOracles.");
 		var was_oracle_verified = false;
 		if (branch.prefHasUserValue(oracle_hash)){
 			if (branch.getBoolPref(oracle_hash) === true){
@@ -192,7 +191,7 @@ function startListening(){
 //callback is used in testing to signal when this page's n10n finished
 function startNotarizing(callback){
 	if (! oracles_intact){
-		alert('Cannot notarize because something is wrong with TLSNotary server. Please try again later');
+		alert('Cannot notarize because something is wrong with PageSigner server. Please try again later');
 		return;
 	}
     var audited_browser = gBrowser.selectedBrowser;
@@ -240,7 +239,7 @@ function startNotarizing(callback){
 	var server = headers.split('\r\n')[1].split(':')[1].replace(/ /g,'');
 	
 	eachWindow(unloadFromWindow);
-	icon =  "chrome://tlsnotary/content/icon_spin.gif";
+	icon =  "chrome://pagesigner/content/icon_spin.gif";
 	eachWindow(loadIntoWindow);
 	  
 	var modulus;
@@ -249,7 +248,7 @@ function startNotarizing(callback){
 		log('got certificate');
 		var cert_obj = getCertObject(cert);
 		if (! verifyCert(cert_obj)){
-			alert("This website cannot be audited by TLSNotary because it presented an untrusted certificate");
+			alert("This website cannot be audited by PageSigner because it presented an untrusted certificate");
 			return;
 		}
 		modulus = getModulus(cert_obj);
@@ -297,13 +296,13 @@ function startNotarizing(callback){
 			callback();
 		}
 		eachWindow(unloadFromWindow);
-		icon = "chrome://tlsnotary/content/icon.png";
+		icon = "chrome://pagesigner/content/icon.png";
 		eachWindow(loadIntoWindow);
 	})
 	.catch(function(err){
 	 //TODO need to get a decent stack trace
 	 	eachWindow(unloadFromWindow);
-		icon =  "chrome://tlsnotary/content/icon.png";
+		icon =  "chrome://pagesigner/content/icon.png";
 		eachWindow(loadIntoWindow);
 		log('There was an error: ' + err);
 		if (err.startsWith('Timed out waiting for notary server to respond') &&
@@ -326,7 +325,7 @@ function create_final_html(html_with_headers, server_name, is_imported){
 	var rv = html_with_headers.split('\r\n\r\n');
 	var headers = rv[0];
 	var html = rv[1]; 
-	var localDir = getTLSNdir();
+	var localDir = getPGSGdir();
 	var time = getTime();
 	var imported_str = "";
 	if (is_imported){
@@ -383,10 +382,10 @@ function save_session_and_open_html(args, server){
 	create_final_html(html_with_headers, commonName)
 	.then(function(dir){
 		localDir = dir;
-		var path_tlsn = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
-		path_tlsn.initWithPath(localDir.path);
-		path_tlsn.append(commonName+'.tlsn');
-		return OS.File.writeAtomic(path_tlsn.path, ba2ua([].concat(
+		var path_pgsg = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
+		path_pgsg.initWithPath(localDir.path);
+		path_pgsg.append(commonName+'.pgsg');
+		return OS.File.writeAtomic(path_pgsg.path, ba2ua([].concat(
 			str2ba('tlsnotary notarization file\n\n'),
 			[0x00, 0x01],
 			bi2ba(cipher_suite, {'fixed':2}),
@@ -448,7 +447,7 @@ var data = ua2ba(imported_data);
 	var sig = data.slice(offset, offset+=sig_len);
 	var commit_hash = data.slice(offset, offset+=32);
 	var notary_pubkey = data.slice(offset, offset+=sig_len);
-	assert (data.length === offset, 'invalid tlsn length');
+	assert (data.length === offset, 'invalid .pgsg length');
 	var cert_obj = getCertObject(cert);
 	var commonName = cert_obj.commonName;
 	//verify cert
@@ -505,10 +504,10 @@ function verify_tlsn_and_show_html(path, create){
 		create_final_html(html_with_headers, commonName, true)
 		.then(function(dir){
 			localDir = dir;
-			var path_tlsn = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
-			path_tlsn.initWithPath(localDir.path);
-			path_tlsn.append(commonName+'.tlsn');
-			return OS.File.writeAtomic(path_tlsn.path, imported_data);
+			var path_pgsg = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
+			path_pgsg.initWithPath(localDir.path);
+			path_pgsg.append(commonName+'.pgsg');
+			return OS.File.writeAtomic(path_pgsg.path, imported_data);
 		})
 		.then(function(){
 			var final_html = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
@@ -550,7 +549,7 @@ function getModulus(cert_obj){
 	var modulus_str = certDumpTree.getDisplayData(12);
 	if (! modulus_str.startsWith( "Modulus (" ) ){
 		//most likely an ECC certificate
-		alert ("Unfortunately this website is not compatible with TLSNotary. (could not parse RSA certificate)");
+		alert ("Unfortunately this website is not compatible with PageSigner. (could not parse RSA certificate)");
 		return;
 	}
 	var lines = modulus_str.split('\n');
@@ -677,8 +676,8 @@ function install_notification(t, commonName, raw_path){
 		log('in load event');
 		var box = gBrowser.getNotificationBox();
 		var priority = box.PRIORITY_INFO_HIGH;
-		var message = 'TLSNotary successfully verified that the webpage below was received from '+commonName;
-		var icon = 'chrome://tlsnotary/content/icon.png';
+		var message = 'PageSigner successfully verified that the webpage below was received from '+commonName;
+		var icon = 'chrome://pagesigner/content/icon.png';
 		var buttons = [{
 			label: 'View raw HTML with HTTP headers',
 			accessKey: '',
@@ -691,7 +690,7 @@ function install_notification(t, commonName, raw_path){
 		}];
 		setTimeout(function(){
 			//without timeout, notifbar fails to show
-			box.appendNotification(message, 'tlsn-notif', icon, priority, buttons);
+			box.appendNotification(message, 'pgsg-notif', icon, priority, buttons);
 		}, 1000);
 		t.removeEventListener("load", load, false);
 	}, false);

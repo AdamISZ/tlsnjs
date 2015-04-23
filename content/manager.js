@@ -1,10 +1,10 @@
 //root directory of managed files
-var tlsn_dir = getTLSNdir().path;
+var pgsg_dir = getPGSGdir().path;
 //array of existing files
-var tlsn_subdirs = []; //subdirectories of TLSNotary directory
+var pgsg_subdirs = []; //subdirectories of pagesigner directory
 //keys are directory names (which have fixed format 
 //timestamp-server name), values are:
-//[tlsn OS.File object, filehash, boolean imported, html table row object]:
+//[pgsg OS.File object, filehash, boolean imported, html table row object]:
 var tdict ={}; 
 //keep track of changes
 var tdict_prev = {};
@@ -31,7 +31,7 @@ function tableRefresher(){
     setTimeout(tableRefresher, 500);
 }
 
-function importTLSNFile(){
+function importPGSGFile(){
     main.verify(); //TODO if import fails due to unverified signature, there is no message to user.
     loadManager();
 }
@@ -51,8 +51,8 @@ function doRename(t){
 	alert("Invalid filename");
 	return;
     }
-    if (!new_name.endsWith(".tlsn")){
-	new_name = new_name + ".tlsn";
+    if (!new_name.endsWith(".pgsg")){
+	new_name = new_name + ".pgsg";
     }
     basename = OS.Path.basename(t.id);
     original_path = t.id;
@@ -68,7 +68,7 @@ function doRename(t){
 
 function doSave(t){
     filename = tdict[t.id][0].path;
-    saveTLSNFile(filename);
+    savePGSGFile(filename);
     //no need to reload here
 }
 
@@ -115,7 +115,7 @@ function addNewRow(fileEntry, dirname, imported,verified,verifier,html_link){
 function deleteFile(basename){
 	var r = confirm("This will remove the entire directory:"+basename.id+", including html. Are you sure?");
 	if (r){
-	    OS.File.removeDir(OS.Path.join(tlsn_dir,basename.id));
+	    OS.File.removeDir(OS.Path.join(pgsg_dir,basename.id));
 	    var row = tdict[basename.id][3];
 	    row.parentNode.removeChild(row);
 	    delete tdict[basename.id];
@@ -127,32 +127,32 @@ function loadManager() {
    //this function will rebuild the tdict and compare to the old version
    tdict_prev = tdict;
    tdict = {}  
-   tlsn_subdirs = [];
+   pgsg_subdirs = [];
    tloaded = false;
-  let iterator = new OS.File.DirectoryIterator(tlsn_dir);
+  let iterator = new OS.File.DirectoryIterator(pgsg_dir);
   let promise = iterator.forEach(
     function onEntry(entry) {
 	if (!entry.isDir){
 	    console.log("entry was not a directory, ignored:"+entry.path);
 	}
 	else {
-	    tlsn_subdirs.push(entry);	    
+	    pgsg_subdirs.push(entry);	    
 	}    
     }
   );
   promise.then(
     function onSuccess() {
       iterator.close();
-      for (var i=0; i < tlsn_subdirs.length; i++){
+      for (var i=0; i < pgsg_subdirs.length; i++){
 	let imported = false;
-	if (tlsn_subdirs[i].name.match("-IMPORTED$")=="-IMPORTED"){ 
+	if (pgsg_subdirs[i].name.match("-IMPORTED$")=="-IMPORTED"){ 
 	    imported = true;
 	}
-	var iterator2 = new OS.File.DirectoryIterator(tlsn_subdirs[i].path);
+	var iterator2 = new OS.File.DirectoryIterator(pgsg_subdirs[i].path);
 	
 	let promise2 = iterator2.forEach(
-	function (entry2) {  
-	    if (entry2.path.endsWith(".tlsn")){
+	function (entry2) { 
+	    if (entry2.path.endsWith(".pgsg")){
 		OS.File.read(entry2.path).then(function (read_data){
 		    file_hash = sha256(read_data);
 		    dirname = OS.Path.basename(OS.Path.dirname(entry2.path));
@@ -165,7 +165,7 @@ function loadManager() {
 			row = tdict_prev[dirname][3];
 		    } 
 		    tdict[dirname]=[entry2, file_hash, imported, row];
-		    if (Object.keys(tdict).length == tlsn_subdirs.length){
+		    if (Object.keys(tdict).length == pgsg_subdirs.length){
 			//remove rows that refer to subdirs no longer existing 
 			//(will only happen if user manually deletes that subdirectory).
 			Array.prototype.diff = function(a) {
@@ -217,7 +217,7 @@ function verifyEntry(basename, path){
 	    var y = jsonToDOM(["img",
 			{height: '30',
 			 width: '30',
-			 src: 'chrome://tlsnotary/content/cross.png',
+			 src: 'chrome://pagesigner/content/cross.png',
 			 }, "Not verified"], document,{});
 	    var z = jsonToDOM([ "text", {}, " Not verified: "+error],document,{});
 	    x.appendChild(y);
@@ -246,7 +246,7 @@ function displayVerification(basename, pubkey){
     var y = jsonToDOM(["img",
 	    {height: '30',
 	    width: '30',
-	    src: 'chrome://tlsnotary/content/check.png',
+	    src: 'chrome://pagesigner/content/check.png',
 	    }, "Valid"], document,{});
     var z = jsonToDOM(["text",{}," valid"],document,{});
     x.appendChild(y);
@@ -254,7 +254,7 @@ function displayVerification(basename, pubkey){
     updateRow(basename,3,x);
     x = jsonToDOM([ "td", {}, used_notary.name],document,{});
     updateRow(basename,4,x); //TODO: pretty print pubkey?
-    var html_link = getTLSNdir();
+    var html_link = getPGSGdir();
     html_link.append(basename);
     html_link.append('html.html');
     block_urls.push(html_link.path);
@@ -265,7 +265,7 @@ function displayVerification(basename, pubkey){
 	    }, "view"], document,{});
     var q = jsonToDOM(["text",{}," , "],document,{});
     z = jsonToDOM(["a",
-	    {href: 'file://' + OS.Path.join(tlsn_dir,basename,"raw.txt"),
+	    {href: 'file://' + OS.Path.join(pgsg_dir,basename,"raw.txt"),
 	    }, "raw"], document,{});	    
     x.appendChild(y);
     x.appendChild(q);

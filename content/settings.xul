@@ -2,13 +2,13 @@
 
 
 
-<!DOCTYPE vbox SYSTEM "chrome://tlsnotary/locale/overlay.dtd">
+<!DOCTYPE vbox SYSTEM "chrome://pagesigner/locale/overlay.dtd">
 
 <window
     xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
     width="1"
     height="1"
     onload="window.close();">   <!-- Close window if it gets opened directly for some reason -->
-  <setting pref="extensions.tlsnotary.fallback" type="string" title="Use fallback server (if oracle is not available)" />
-  <setting pref="extensions.tlsnotary.verbose" type="bool" title="Verbose logging" value="false" />
+  <setting pref="extensions.pagesigner.fallback" type="string" title="Use fallback server (if oracle is not available)" />
+  <setting pref="extensions.pagesigner.verbose" type="bool" title="Verbose logging" value="false" />
 </window>

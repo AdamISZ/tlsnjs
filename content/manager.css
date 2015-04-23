@@ -87,7 +87,7 @@ table.table1{
     text-shadow:1px 1px 1px #fff;
 }
 .table1 tbody span.check::before{
-    content : url(chrome://tlsnotary/content/check.png)
+    content : url(chrome://pagesigner/content/check.png)
 }
 
 button{
@@ -108,7 +108,7 @@ button em{
     display:inline-block;
     width:24px;
     height:24px;
-    background-image: url(chrome://tlsnotary/content/refresh.png);      
+    background-image: url(chrome://pagesigner/content/refresh.png);      
 }
 
 button em.leftImage{

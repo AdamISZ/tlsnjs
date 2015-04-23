@@ -4,7 +4,7 @@
      xmlns:em="http://www.mozilla.org/2004/em-rdf#">
 
   <Description about="urn:mozilla:install-manifest">
-    <em:id>tlsnotary@tlsnotary2</em:id>
+    <em:id>pagesigner@tlsnotary</em:id>
     <em:version>1.0</em:version>
     <em:type>2</em:type>
     <em:bootstrap>true</em:bootstrap>
@@ -21,11 +21,11 @@
     </em:targetApplication>
    
     <!-- Front End MetaData -->
-    <em:name>TLSNotary</em:name>
-    <em:description>TLSNotary - prove an HTTPS page was in your browser</em:description>
+    <em:name>PageSigner</em:name>
+    <em:description>PageSigner - a cryptographically secure webpage screenshot tool</em:description>
     <em:creator>TLSNotary Group</em:creator>
     <em:homepageURL>https://tlsnotary.org</em:homepageURL>
-    <em:optionsURL>chrome://tlsnotary/content/settings.xul</em:optionsURL>
+    <em:optionsURL>chrome://pagesigner/content/settings.xul</em:optionsURL>
     <em:optionsType>2</em:optionsType>
   </Description>      
 </RDF>

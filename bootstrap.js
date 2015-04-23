@@ -12,7 +12,7 @@ Cu.import("resource://gre/modules/AddonManager.jsm");
 var self = this, icon;
 
 function include(addon, path) {
-  Services.scriptloader.loadSubScript("chrome://tlsnotary/content/"+path, self);
+  Services.scriptloader.loadSubScript("chrome://pagesigner/content/"+path, self);
 }
 
 function $(node, childId) {
@@ -35,10 +35,10 @@ function loadIntoWindow(window) {
     // add to palette
     button = doc.createElement("toolbarbutton");
     button.setAttribute("id", BUTTON_ID);
-    button.setAttribute("label", "TLSNotary");
+    button.setAttribute("label", "PageSigner");
     button.setAttribute("type", "menu");
     button.setAttribute("class", "toolbarbutton-1 chromeclass-toolbar-additional");
-    button.setAttribute("tooltiptext", "TLSNotary menu");
+    button.setAttribute("tooltiptext", "PageSigner menu");
     button.style.listStyleImage = "url(" + icon + ")";
     button.addEventListener("command", main.action, false);
     toolbox.palette.appendChild(button);
@@ -50,21 +50,21 @@ function loadIntoWindow(window) {
      let mi1 = doc.createElement("menuitem");
 	mi1.setAttribute("label", 'Notarize this page');
 	mi1.setAttribute("class","menuitem-with-favicon");
-	mi1.setAttribute("image", 'chrome://tlsnotary/content/icon.png');
+	mi1.setAttribute("image", 'chrome://pagesigner/content/icon.png');
 	mi1.addEventListener("command",main.notarize, false)
 	mpu.appendChild(mi1);
 	mpu.appendChild(sep1);
 	 let mi2 = doc.createElement("menuitem");
 	mi2.setAttribute("label", 'Verify tlsn file');
 	mi2.setAttribute("class","menuitem-with-favicon");
-	mi2.setAttribute("image", 'chrome://tlsnotary/content/verify.png');
+	mi2.setAttribute("image", 'chrome://pagesigner/content/verify.png');
 	mi2.addEventListener("command",main.verify, false)
 	mpu.appendChild(mi2);
 	mpu.appendChild(sep2);
 	 let mi3 = doc.createElement("menuitem");
 	mi3.setAttribute("label", 'Manage files');
 	mi3.setAttribute("class","menuitem-with-favicon");
-	mi3.setAttribute("image", 'chrome://tlsnotary/content/manage.png');
+	mi3.setAttribute("image", 'chrome://pagesigner/content/manage.png');
 	mi3.addEventListener("command",main.manage, false)
 	mpu.appendChild(mi3);
     
@@ -141,7 +141,7 @@ function windowWatcher (subject, topic) {
 function startup(data, reason) AddonManager.getAddonByID(data.id, function(addon) {
   thisaddon = addon;
   //icon = addon.getResourceURI("icon.png").spec;
-  icon = "chrome://tlsnotary/content/icon.png";
+  icon = "chrome://pagesigner/content/icon.png";
   // existing windows
   eachWindow(loadIntoWindow);
   // new windows

@@ -6,10 +6,10 @@ let prompts = Services.prompt;
 let prefs = Services.prefs;
 
 const NS_XUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul",
-      PREFS_BRANCH = Services.prefs.getBranch("extensions.tlsnotary.button-position."),
+      PREFS_BRANCH = Services.prefs.getBranch("extensions.pagesigner.button-position."),
       PREF_TB = "nav-bar",
       PREF_NEXT = "next-item",
-      BUTTON_ID = "tlsnotary-button";
+      BUTTON_ID = "pagesigner-button";
 
 let main = {
   notarize: function() {
@@ -24,11 +24,11 @@ let main = {
 	var dispdir = Components.classes["@mozilla.org/file/directory_service;1"].
      getService(Components.interfaces.nsIProperties).
      get("ProfD", Components.interfaces.nsIFile);
-        dispdir.append("TLSNotary")
+        dispdir.append("pagesigner")
 	const nsIFilePicker = Components.interfaces.nsIFilePicker;
 	var fp = Components.classes["@mozilla.org/filepicker;1"]
 				   .createInstance(nsIFilePicker);
-	fp.init(window, "Select the tlsn file you want to verify", nsIFilePicker.modeOpen);
+	fp.init(window, "Select the .pgsg file you want to verify", nsIFilePicker.modeOpen);
 	fp.displayDirectory = dispdir;
 	var rv = fp.show();
 	if (rv == nsIFilePicker.returnOK || rv == nsIFilePicker.returnReplace) {

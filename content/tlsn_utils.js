@@ -260,11 +260,11 @@ function getTime(){
 	return time;
 }
 
-function getTLSNdir(){
+function getPGSGdir(){
 	var localDir = Cc2["@mozilla.org/file/directory_service;1"].
 			getService(Ci2.nsIProperties).get("ProfD", Ci2.nsIFile);
 
-	localDir.append("TLSNotary");
+	localDir.append("pagesigner");
 	 if (!localDir.exists() || !localDir.isDirectory()) {
 		// read and write permissions to owner and group, read-only for others.
 		localDir.create(Ci2.nsIFile.DIRECTORY_TYPE, 0774);
